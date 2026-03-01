@@ -1,32 +1,141 @@
-import express from "express";
-import cors from "cors";
+/**
+ * server.js — PathwayAI Backend
+ * Uses Node http module directly to avoid fetch Headers Timeout bug
+ */
 
-const app = express();
-const PORT = 3001;
-const OLLAMA_URL = "http://localhost:11434";
+import express from "express";
+import cors    from "cors";
+import http    from "http";
+
+const app        = express();
+const PORT       = 3001;
+const OLLAMA_HOST = "127.0.0.1";
+const OLLAMA_PORT = 11434;
 
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", model: "llama3.1", timestamp: new Date().toISOString() });
-});
+/* ─────────────────────────────────────────────
+   Core helper: call Ollama using raw http.request
+   — no fetch, no headers timeout, no hangs
+───────────────────────────────────────────── */
+function ollamaRequest(path, body) {
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify(body);
 
-// Check if Ollama is running
-app.get("/api/status", async (req, res) => {
+    const options = {
+      hostname: OLLAMA_HOST,
+      port:     OLLAMA_PORT,
+      path,
+      method:   "POST",
+      headers: {
+        "Content-Type":   "application/json",
+        "Content-Length": Buffer.byteLength(payload),
+      },
+      // No timeout set here — we handle it via setTimeout below
+    };
+
+    const req = http.request(options, (res) => {
+      let data = "";
+      res.setEncoding("utf8");
+      res.on("data", chunk => { data += chunk; });
+      res.on("end", () => {
+        try {
+          resolve({ status: res.statusCode, body: JSON.parse(data) });
+        } catch {
+          resolve({ status: res.statusCode, body: { raw: data } });
+        }
+      });
+    });
+
+    req.on("error", reject);
+
+    // 3 minute hard timeout
+    const timer = setTimeout(() => {
+      req.destroy(new Error("OLLAMA_TIMEOUT"));
+    }, 180_000);
+
+    res => clearTimeout(timer); // clear if response arrives
+    req.on("response", () => clearTimeout(timer));
+
+    req.write(payload);
+    req.end();
+  });
+}
+
+/* ─────────────────────────────────────────────
+   GET helper (for /api/tags)
+───────────────────────────────────────────── */
+function ollamaGet(path) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ hostname: OLLAMA_HOST, port: OLLAMA_PORT, path, method: "GET" }, (res) => {
+      let data = "";
+      res.on("data", c => data += c);
+      res.on("end", () => {
+        try { resolve(JSON.parse(data)); }
+        catch { resolve({}); }
+      });
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+/* ─────────────────────────────────────────────
+   Model detection
+───────────────────────────────────────────── */
+const MODEL_PRIORITY = [
+  "llama3.2:3b", "llama3.2", "llama3.2:latest",
+  "llama3.1:8b-instruct-q4_0", "llama3.1:8b",
+  "llama3.1", "llama3.1:latest",
+  "llama3:latest", "llama3",
+  "phi3", "mistral",
+];
+
+let cachedModel = null;
+
+async function getBestModel() {
+  if (cachedModel) return cachedModel;
   try {
-    const response = await fetch(`${OLLAMA_URL}/api/tags`);
-    const data = await response.json();
-    const models = data.models?.map((m) => m.name) || [];
-    const hasLlama = models.some((m) => m.includes("llama3.1") || m.includes("llama3"));
-    res.json({ ollama: true, models, hasLlama });
+    const data     = await ollamaGet("/api/tags");
+    const installed = (data.models || []).map(m => m.name);
+    console.log("📦 Installed models:", installed);
+
+    for (const p of MODEL_PRIORITY) {
+      if (installed.includes(p)) {
+        cachedModel = p;
+        console.log(`✅ Using model: ${p}`);
+        return p;
+      }
+    }
+
+    if (installed.length > 0) {
+      cachedModel = installed[0];
+      console.log(`⚠️  Fallback model: ${installed[0]}`);
+      return installed[0];
+    }
+  } catch (err) {
+    console.error("Model detection error:", err.message);
+  }
+  return "llama3.1";
+}
+
+/* ─────────────────────────────────────────────
+   ROUTES
+───────────────────────────────────────────── */
+app.get("/health", (_, res) => res.json({ status: "ok" }));
+
+app.get("/api/status", async (_, res) => {
+  try {
+    const data   = await ollamaGet("/api/tags");
+    const models = (data.models || []).map(m => m.name);
+    const active = await getBestModel();
+    res.json({ ollama: true, models, activeModel: active });
   } catch {
-    res.status(503).json({ ollama: false, error: "Ollama is not running on port 11434" });
+    res.status(503).json({ ollama: false, error: "Ollama not running on port 11434" });
   }
 });
 
-// Main chat endpoint
 app.post("/api/chat", async (req, res) => {
   const { subject = "General", messages = [] } = req.body;
 
@@ -34,126 +143,79 @@ app.post("/api/chat", async (req, res) => {
     return res.status(400).json({ error: "No messages provided" });
   }
 
-  const systemPrompt = `You are an expert AI tutor specializing in ${subject}. Your teaching style is:
-- Clear and engaging: break down complex concepts into digestible pieces
-- Socratic when helpful: ask guiding questions to deepen understanding
-- Practical: use real-world examples, analogies, and concrete illustrations
-- Encouraging: celebrate curiosity and make learning feel rewarding
-- Adaptive: match the student's apparent level and adjust your explanations accordingly
-- Concise but thorough: don't be unnecessarily verbose, but never sacrifice clarity
+  const model = await getBestModel();
 
-Use markdown formatting where helpful (bold for key terms, code blocks for code, etc.).
-Always aim to spark genuine understanding, not just surface-level answers.
-Current subject focus: ${subject}`;
+  const systemPrompt = `You are a concise AI tutor for ${subject}.
+Rules:
+- Keep answers SHORT and clear (under 200 words unless asked for more)
+- Use simple language, give one good example
+- Ask one follow-up question at the end to check understanding
+Subject: ${subject}`;
 
-  const payload = {
-    model: "llama3.1",
+  const body = {
+    model,
     stream: false,
     messages: [
       { role: "system", content: systemPrompt },
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
+      ...messages.map(m => ({ role: m.role, content: m.content })),
     ],
     options: {
       temperature: 0.7,
-      top_p: 0.9,
-      num_predict: 1024,
+      top_p:       0.9,
+      num_predict: 400,
+      num_thread:  8,
     },
   };
 
+  const last = messages[messages.length - 1]?.content?.slice(0, 60);
+  console.log(`\n→ [${model}] ${subject}: "${last}..."`);
+
   try {
-    const response = await fetch(`${OLLAMA_URL}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const result = await ollamaRequest("/api/chat", body);
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return res.status(502).json({ error: `Ollama error: ${errText}` });
+    if (result.status !== 200) {
+      console.error("Ollama non-200:", result.status, result.body);
+      return res.status(502).json({ error: `Ollama error ${result.status}: ${JSON.stringify(result.body)}` });
     }
 
-    const data = await response.json();
-    const reply = data.message?.content || "I couldn't generate a response. Please try again.";
+    const reply = result.body.message?.content
+      || result.body.response
+      || "Could not generate a response.";
 
-    res.json({
-      reply,
-      model: data.model,
-      totalTokens: data.eval_count || null,
-      promptTokens: data.prompt_eval_count || null,
-    });
+    const tps = result.body.eval_count && result.body.eval_duration
+      ? (result.body.eval_count / (result.body.eval_duration / 1e9)).toFixed(1)
+      : null;
+
+    console.log(`← ${result.body.eval_count || "?"} tokens${tps ? ` @ ${tps} tok/s` : ""}`);
+    res.json({ reply, model: result.body.model || model, tokensPerSec: tps });
+
   } catch (err) {
-    if (err.code === "ECONNREFUSED" || err.cause?.code === "ECONNREFUSED") {
-      return res.status(503).json({
-        error: "Cannot connect to Ollama. Make sure Ollama is running: `ollama serve`",
-      });
+    if (err.message === "OLLAMA_TIMEOUT") {
+      console.error("← Timed out after 3 minutes");
+      return res.status(504).json({ error: "Timed out. Try a shorter question or use llama3.2:3b for speed." });
     }
-    console.error("Chat error:", err);
+    if (err.code === "ECONNREFUSED") {
+      console.error("← Ollama not running");
+      return res.status(503).json({ error: "Ollama is not running. Start it with: ollama serve" });
+    }
+    console.error("← Chat error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Streaming endpoint (optional, for future use)
-app.post("/api/chat/stream", async (req, res) => {
-  const { subject = "General", messages = [] } = req.body;
+/* ─────────────────────────────────────────────
+   START
+───────────────────────────────────────────── */
+app.listen(PORT, async () => {
+  console.log(`\n🎓 PathwayAI Backend → http://localhost:${PORT}\n`);
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
-  const systemPrompt = `You are an expert AI tutor for ${subject}. Be clear, engaging, and use examples.`;
-
-  const payload = {
-    model: "llama3.1",
-    stream: true,
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-    ],
-    options: { temperature: 0.7, num_predict: 1024 },
-  };
-
+  // Check Ollama on startup
   try {
-    const response = await fetch(`${OLLAMA_URL}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n").filter(Boolean);
-
-      for (const line of lines) {
-        try {
-          const json = JSON.parse(line);
-          const token = json.message?.content || "";
-          if (token) res.write(`data: ${JSON.stringify({ token })}\n\n`);
-          if (json.done) res.write(`data: [DONE]\n\n`);
-        } catch {}
-      }
-    }
-    res.end();
-  } catch (err) {
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
-    res.end();
+    const model = await getBestModel();
+    console.log(`\n✅ Ready! Using: ${model}`);
+    console.log(`\n💡 For faster responses: ollama pull llama3.2:3b\n`);
+  } catch {
+    console.log(`\n⚠️  Could not connect to Ollama.`);
+    console.log(`   Make sure it's running: ollama serve\n`);
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`\n🎓 AI Tutor Backend running on http://localhost:${PORT}`);
-  console.log(`📡 Connecting to Ollama at ${OLLAMA_URL}`);
-  console.log(`\nEndpoints:`);
-  console.log(`  GET  /health        → Server health check`);
-  console.log(`  GET  /api/status    → Check Ollama + models`);
-  console.log(`  POST /api/chat      → Chat with Llama 3.1`);
-  console.log(`  POST /api/chat/stream → Streaming chat`);
-  console.log(`\nMake sure Ollama is running: ollama serve`);
-  console.log(`Make sure model is pulled:   ollama pull llama3.1\n`);
 });

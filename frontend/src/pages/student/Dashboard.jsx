@@ -206,6 +206,7 @@ export default function Dashboard() {
                     { label: "Find a Mentor",   path: "/student/mentors",     icon: "⭐", accent: "#F59E0B" },
                     { label: "Credentials",     path: "/student/credentials", icon: "🏅", accent: "#22C55E" },
                     { label: "Browse Employers",path: "/student/employers",   icon: "💼", accent: "#14B8A6" },
+                    {label: "Study Plan",path:"/student/studyplan",icon:"📚", accent:"#14B8A6"},
                   ].map((a) => (
                     <button key={a.path} onClick={() => navigate(a.path)}
                       style={{
