@@ -16,6 +16,7 @@ import Credentials       from "./pages/student/Credentials";
 import MentorMarketPlace from "./pages/student/MentorMarketplace";
 import Employers         from "./pages/student/Employers";
 import StudyPlan from "./pages/student/StudyPlan";
+import AnimatedLessons from "./pages/student/AnimatedLessons";
 export default function App() {
   return (
     <AppProvider>
@@ -36,7 +37,7 @@ export default function App() {
         <Route path="/student/mentors"            element={<MentorMarketPlace />} />
         <Route path="/student/mentormarketplace"  element={<MentorMarketPlace />} />
         <Route path="/student/employers"         element={<Employers />} />
-
+        <Route path="/student/lessons" element={<AnimatedLessons />} />
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
