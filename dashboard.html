@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PathwayAI — Teacher Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css"/>
+</head>
+<body>
+
+<aside id="sidebar" class="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <span class="brand-name">Pathway<span>AI</span></span>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)"><span class="material-icons nav-icon">dashboard</span><span class="nav-label">Dashboard</span></button>
+    <button class="nav-item" data-page="students" onclick="showPage('students',this)"><span class="material-icons nav-icon">group</span><span class="nav-label">Students</span></button>
+    <button class="nav-item" data-page="live" onclick="showPage('live',this)"><span class="material-icons nav-icon">videocam</span><span class="nav-label">Live Session</span><span class="nav-badge" id="liveNavBadge" style="display:none">LIVE</span></button>
+    <button class="nav-item" data-page="analytics" onclick="showPage('analytics',this)"><span class="material-icons nav-icon">bar_chart</span><span class="nav-label">Analytics</span></button>
+    <button class="nav-item" data-page="messages" onclick="showPage('messages',this)"><span class="material-icons nav-icon">message</span><span class="nav-label">Messages</span><span class="nav-badge red" id="msgBadge" style="display:none">0</span></button>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="sidebar-teacher">
+      <div class="teacher-ava" id="sideTeacherAva">T</div>
+      <div><div class="teacher-name" id="sideTeacherName">Teacher</div><div class="teacher-role">Teacher</div></div>
+    </div>
+    <button class="logout-btn" onclick="logout()"><span class="material-icons">power_settings_new</span></button>
+  </div>
+</aside>
+
+<main class="main-content" id="mainContent">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Good morning, <span id="teacherGreetName">Teacher</span></h1>
+        <p class="page-sub">Here's what's happening in your classroom today.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-outline" onclick="showPage('live',document.querySelector('[data-page=live]'))"><span class="material-icons" style="vertical-align:middle;">videocam</span> Start Live Session</button>
+        <button class="btn-outline" onclick="openScheduleModal()">Schedule Session</button>
+        <button class="btn-teal" onclick="openAddStudent()"><span class="material-icons" style="vertical-align:middle;">person_add</span> Add Student</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-icon teal material-icons">school</div><div><div class="stat-num teal" id="st0">0</div><div class="stat-lbl">Total Students</div></div></div>
+      <div class="stat-card"><div class="stat-icon green material-icons">check_circle</div><div><div class="stat-num green" id="st1">0</div><div class="stat-lbl">Performing Well</div></div></div>
+      <div class="stat-card"><div class="stat-icon red material-icons">error</div><div><div class="stat-num red" id="st2">0</div><div class="stat-lbl">Need Attention</div></div></div>
+      <div class="stat-card"><div class="stat-icon yellow material-icons">trending_up</div><div><div class="stat-num yellow" id="st3">—</div><div class="stat-lbl">Class Avg Score</div></div></div>
+    </div>
+    <div id="alertsRow" class="alerts-row"></div>
+    <div class="filter-bar">
+      <div class="filter-tabs">
+        <button class="ftab active" onclick="setFilter(this,'all')">All</button>
+        <button class="ftab" onclick="setFilter(this,'poor')"><span class="material-icons" style="vertical-align:middle;">error</span> Needs Help</button>
+        <button class="ftab" onclick="setFilter(this,'average')"><span class="material-icons" style="vertical-align:middle;">trending_up</span> Average</button>
+        <button class="ftab" onclick="setFilter(this,'good')"><span class="material-icons" style="vertical-align:middle;">check_circle</span> Good</button>
+      </div>
+      <input class="search-input" placeholder="Search students..." oninput="searchStudents(this.value)"/>
+    </div>
+    <div class="student-grid" id="studentGrid"></div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div id="page-students" class="page">
+    <div class="page-header">
+      <div><h1 class="page-title">Student Management</h1><p class="page-sub">Add, remove, and manage your students.</p></div>
+      <button class="btn-teal" onclick="openAddStudent()"><span class="material-icons" style="vertical-align:middle;">person_add</span> Add Student</button>
+    </div>
+    <div class="students-table-wrap">
+      <table class="students-table">
+        <thead><tr><th>Student</th><th>Email</th><th>Score</th><th>Attendance</th><th>Grade</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="studentsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LIVE SESSION -->
+  <div id="page-live" class="page">
+    <div id="preCall">
+      <div class="page-header">
+        <div><h1 class="page-title">Live Session</h1><p class="page-sub">Start a real-time video session with your students.</p></div>
+      </div>
+      <div id="scheduledInfo" class="alert-banner" style="display:none;margin-bottom:16px"></div>
+      <div class="precall-layout">
+        <div class="precall-preview">
+          <video id="previewVideo" autoplay muted playsinline></video>
+          <div class="preview-overlay" id="previewOverlay">
+            <div class="preview-off-icon"><span class="material-icons">videocam_off</span></div>
+            <p>Camera preview will appear here</p>
+          </div>
+          <div class="preview-controls">
+            <button class="pctrl" id="previewMicBtn" onclick="togglePreviewMic()"><span class="material-icons">mic</span></button>
+            <button class="pctrl" id="previewCamBtn" onclick="togglePreviewCam()"><span class="material-icons">videocam</span></button>
+          </div>
+        </div>
+        <div class="precall-settings">
+          <div class="precall-card">
+            <h3>Session Settings</h3>
+            <div class="form-group"><label>Session Title</label><input type="text" id="sessionTitle" placeholder="e.g. Chapter 5 — Quadratic Equations" class="form-input"/></div>
+            <div class="form-group"><label>Invite Students</label><div id="inviteCheckboxes" class="invite-list"></div></div>
+            <button class="btn-teal big" onclick="startLiveSession()"><span class="material-icons" style="vertical-align:middle;">videocam</span> Start Live Session</button>
+          </div>
+          <div class="precall-card" style="margin-top:12px">
+            <div style="font-size:12px;color:var(--text3);line-height:1.9">
+              <div><span class="material-icons" style="vertical-align:middle;font-size:14px">wifi</span> Students on the same server will be notified</div>
+              <div><span class="material-icons" style="vertical-align:middle;font-size:14px">lock</span> Video is peer-to-peer (encrypted)</div>
+              <div><span class="material-icons" style="vertical-align:middle;font-size:14px">public</span> Works on same Wi-Fi network</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="liveCall" class="live-call" style="display:none">
+      <div class="live-topbar">
+        <div class="live-brand"><div class="live-dot"></div><span id="liveTitle">Live Session</span></div>
+        <div class="live-topbar-center">
+          <div class="live-timer" id="liveTimer">00:00</div>
+          <div class="live-participants-count" id="liveParticipantsCount"><span class="material-icons" style="vertical-align:middle;">group</span> 1</div>
+        </div>
+        <div class="live-topbar-actions">
+          <button class="tbar-btn" onclick="toggleRecording()" id="recBtn"><span class="material-icons" style="vertical-align:middle;">fiber_manual_record</span> Record</button>
+          <button class="tbar-btn" onclick="openBroadcastPanel()"><span class="material-icons" style="vertical-align:middle;">campaign</span> Announce</button>
+          <button class="tbar-btn red" onclick="endLiveSession()">End Session</button>
+        </div>
+      </div>
+      <div class="live-body">
+        <div class="video-area" id="videoArea">
+          <div class="video-tile main-tile" id="mainTile">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <div class="tile-label" id="myTileLabel">You (Teacher)</div>
+            <div class="tile-badge teacher-badge">Host</div>
+          </div>
+          <div class="remote-tiles" id="remoteTiles"></div>
+        </div>
+        <div class="live-right-panel" id="liveRightPanel">
+          <div class="panel-tabs">
+            <button class="ptab active" onclick="switchPanelTab(this,'chatPanel','participantsPanel')"><span class="material-icons" style="vertical-align:middle;">chat</span> Chat</button>
+            <button class="ptab" onclick="switchPanelTab(this,'participantsPanel','chatPanel')"><span class="material-icons" style="vertical-align:middle;">group</span> People</button>
+          </div>
+          <div id="chatPanel" class="panel-content">
+            <div class="chat-msgs" id="chatMsgs"></div>
+            <div class="chat-input-area">
+              <input type="text" id="chatInput" placeholder="Message everyone..." onkeydown="if(event.key==='Enter')sendChat()"/>
+              <button onclick="sendChat()"><span class="material-icons">send</span></button>
+            </div>
+          </div>
+          <div id="participantsPanel" class="panel-content" style="display:none">
+            <div class="participants-list" id="participantsList"></div>
+          </div>
+        </div>
+      </div>
+      <div class="live-controls">
+        <div class="controls-left"><div class="ctrl-info"><div class="ctrl-info-name" id="ctrlName">Teacher</div><div class="ctrl-info-room" id="ctrlRoom">Room: —</div></div></div>
+        <div class="controls-center">
+          <button class="ctrl-btn" id="micBtn" onclick="toggleMic()"><span class="material-icons">mic</span><small>Mute</small></button>
+          <button class="ctrl-btn" id="camBtn" onclick="toggleCam()"><span class="material-icons">videocam</span><small>Camera</small></button>
+          <button class="ctrl-btn" id="screenBtn" onclick="toggleScreen()"><span class="material-icons">screen_share</span><small>Share</small></button>
+          <button class="ctrl-btn" onclick="toggleHandRaise()"><span class="material-icons">pan_tool</span><small>Hand</small></button>
+          <button class="ctrl-btn red" onclick="endLiveSession()"><span class="material-icons">call_end</span><small>End</small></button>
+        </div>
+        <div class="controls-right"><button class="ctrl-btn" onclick="toggleRightPanel()"><span class="material-icons">chat</span><small>Chat</small></button></div>
+      </div>
+      <div id="broadcastPanel" class="broadcast-panel" style="display:none">
+        <div class="broadcast-inner">
+          <h4>Broadcast to Students</h4>
+          <textarea id="broadcastText" placeholder="Type your announcement..."></textarea>
+          <div class="broadcast-actions">
+            <button onclick="closeBroadcastPanel()">Cancel</button>
+            <button class="primary" onclick="sendBroadcast()">Send to All</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div id="page-analytics" class="page">
+    <div class="page-header">
+      <div><h1 class="page-title">Analytics</h1><p class="page-sub">Class performance insights and trends.</p></div>
+      <div class="header-actions">
+        <button class="btn-outline" onclick="renderAnalytics()"><span class="material-icons" style="vertical-align:middle;">refresh</span> Refresh</button>
+        <button class="btn-teal" onclick="exportAnalyticsCSV()">⬇️ Export CSV</button>
+      </div>
+    </div>
+    <div id="analyticsContent"></div>
+  </div>
+
+  <!-- MESSAGES -->
+  <div id="page-messages" class="page">
+    <div class="page-header">
+      <div><h1 class="page-title">Messages</h1><p class="page-sub">Direct messages with your students.</p></div>
+      <button class="btn-teal" onclick="openBroadcastMsgModal()"><span class="material-icons" style="vertical-align:middle;">campaign</span> Message All</button>
+    </div>
+    <div class="messages-layout">
+      <div class="msg-list" id="msgList"></div>
+      <div class="msg-content" id="msgContent">
+        <div class="msg-empty"><div style="font-size:40px;margin-bottom:14px"><span class="material-icons" style="font-size:40px;">chat</span></div><div>Select a student to start messaging</div></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Student Detail Modal -->
+<div id="studentModal" class="modal-bg" style="display:none" onclick="closeStudentModal(event)">
+  <div class="modal-box" id="studentModalBox"></div>
+</div>
+
+<!-- Add Student Modal -->
+<div id="addStudentModal" class="modal-bg" style="display:none" onclick="closeAddModal(event)">
+  <div class="modal-box small">
+    <div class="modal-hdr"><h3>➕ Add Student</h3><button onclick="closeAddModal()">✕</button></div>
+    <div class="modal-body-pad">
+      <div class="form-group"><label>Full Name</label><input type="text" id="addName" placeholder="e.g. Arjun Singh" class="form-input"/></div>
+      <div class="form-group"><label>Email</label><input type="email" id="addEmail" placeholder="student@school.edu" class="form-input"/></div>
+      <div class="form-group"><label>Initial Grade</label>
+        <select id="addGradeLevel" class="form-input">
+          <option>A+</option><option>A</option><option>B</option><option selected>C</option><option>D</option><option>F</option>
+        </select>
+      </div>
+      <div id="addStudentError" style="color:#ef4444;font-size:12px;margin-bottom:10px;display:none"></div>
+      <button class="btn-teal full" onclick="addStudent()">Add Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- Broadcast Message Modal -->
+<div id="broadcastMsgModal" class="modal-bg" style="display:none" onclick="closeBroadcastMsgModal(event)">
+  <div class="modal-box small">
+    <div class="modal-hdr"><h3>Broadcast Message</h3><button onclick="closeBroadcastMsgModal()">✕</button></div>
+    <div class="modal-body-pad">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Send a message to all your students at once.</p>
+      <div class="form-group"><label>Message</label><textarea id="broadcastMsgText" class="form-input" style="height:90px;resize:vertical" placeholder="e.g. Homework due tomorrow — Chapter 5 exercises"></textarea></div>
+      <button class="btn-teal full" onclick="sendBroadcastMsg()">Send to All Students</button>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule Session Modal -->
+<div id="scheduleModal" class="modal-bg" style="display:none" onclick="closeScheduleModal(event)">
+  <div class="modal-box small">
+    <div class="modal-hdr"><h3><span class="material-icons" style="vertical-align:middle;">schedule</span> Schedule Session</h3><button onclick="closeScheduleModal()">✕</button></div>
+    <div class="modal-body-pad">
+      <div class="form-group"><label>Date &amp; Time</label><input type="datetime-local" id="scheduleDateTime" class="form-input"/></div>
+      <div class="form-group"><label>Title</label><input type="text" id="scheduleTitle" class="form-input" placeholder="e.g. Chapter 5 — Quadratic Equations"/></div>
+      <button class="btn-teal full" onclick="scheduleSession()">Schedule</button>
+    </div>
+  </div>
+</div>
+
+<div class="ws-badge" id="wsBadge">Connecting...</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>
