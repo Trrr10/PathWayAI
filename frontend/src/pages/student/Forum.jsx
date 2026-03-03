@@ -3,7 +3,7 @@
  */
 
 import { useState } from "react";
-import Sidebar from "../../components/layout/Sidebar";
+
 import { useApp } from "../../context/AppContext";
 import { forumData } from "../../data/allData";
 
@@ -62,7 +62,7 @@ export default function Forum() {
   const postView = selected && posts.find(p => p.id === selected.id) || selected;
 
   return (
-    <Sidebar>
+   
       <div className={`min-h-screen ${bg} flex`}>
         {/* Post list */}
         <div className={`w-full md:w-96 shrink-0 border-r h-screen overflow-y-auto ${dark ? "border-slate-800" : "border-slate-200"}`}>
@@ -158,6 +158,6 @@ export default function Forum() {
           </div>
         )}
       </div>
-    </Sidebar>
+   
   );
 }

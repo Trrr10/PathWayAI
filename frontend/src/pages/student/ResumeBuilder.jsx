@@ -1,6 +1,6 @@
 // ResumeBuilder.jsx
 import { useState } from "react";
-import Sidebar from "../../components/layout/Sidebar";
+
 import { useApp } from "../../context/AppContext";
 
 export default function ResumeBuilder() {
@@ -21,7 +21,7 @@ export default function ResumeBuilder() {
   const inputCls = `w-full text-sm rounded-xl border px-4 py-3 outline-none ${dark ? "bg-slate-800 border-slate-700 text-white placeholder-slate-600" : "bg-white border-slate-300 text-slate-800 placeholder-slate-400"}`;
 
   return (
-    <Sidebar>
+    
       <div className={`min-h-screen ${bg} p-6 md:p-8`}>
         <div className="max-w-4xl mx-auto">
           <h1 className={`font-display text-3xl italic mb-2 ${text}`}>📄 Resume Builder</h1>
@@ -80,6 +80,6 @@ export default function ResumeBuilder() {
           </div>
         </div>
       </div>
-    </Sidebar>
+   
   );
 }
