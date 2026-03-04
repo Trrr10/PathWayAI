@@ -1,361 +1,282 @@
 /**
  * Analytics.jsx — PathwayAI Teacher Analytics
- * Deep-dive class performance: trends, subject breakdown, student leaderboard
- * src/pages/teacher/Analytics.jsx
+ * Glassmorphism soft pink calm aesthetic
  */
-
 import { useState } from "react";
-import { useApp } from "../../context/AppContext";
+import { GLASS_CSS, scoreTheme, AVATAR_GRADIENTS } from "./glassTheme";
 
 const STUDENTS = [
-  { name:"Rahul K.",  avatar:"R", grad:"from-sky-500 to-blue-600",     scores:{ Mathematics:45, Science:72, History:68, English:61, Geography:55 }, streak:5,  sessions:8  },
-  { name:"Priya M.",  avatar:"P", grad:"from-teal-500 to-cyan-600",    scores:{ Mathematics:88, Science:79, History:91, English:94, Geography:82 }, streak:14, sessions:21 },
-  { name:"Arjun T.",  avatar:"A", grad:"from-violet-500 to-purple-600",scores:{ Mathematics:62, Science:55, History:48, English:52, Geography:49 }, streak:2,  sessions:5  },
-  { name:"Meera S.",  avatar:"M", grad:"from-amber-500 to-orange-500", scores:{ Mathematics:73, Science:81, History:76, English:88, Geography:71 }, streak:8,  sessions:14 },
-  { name:"Raj P.",    avatar:"R", grad:"from-green-500 to-emerald-600",scores:{ Mathematics:91, Science:88, History:82, English:79, Geography:85 }, streak:21, sessions:28 },
-  { name:"Sunita D.", avatar:"S", grad:"from-red-500 to-rose-600",     scores:{ Mathematics:34, Science:41, History:52, English:38, Geography:44 }, streak:0,  sessions:3  },
-  { name:"Dev R.",    avatar:"D", grad:"from-indigo-500 to-blue-600",  scores:{ Mathematics:67, Science:63, History:71, English:58, Geography:60 }, streak:4,  sessions:9  },
-  { name:"Aisha K.",  avatar:"A", grad:"from-pink-500 to-rose-500",    scores:{ Mathematics:79, Science:84, History:77, English:92, Geography:80 }, streak:11, sessions:17 },
+  { name:"Rahul K.",  avatar:"R", scores:{ Mathematics:45, Science:72, History:68, English:61, Geography:55 }, streak:5,  sessions:8  },
+  { name:"Priya M.",  avatar:"P", scores:{ Mathematics:88, Science:79, History:91, English:94, Geography:82 }, streak:14, sessions:21 },
+  { name:"Arjun T.",  avatar:"A", scores:{ Mathematics:62, Science:55, History:48, English:52, Geography:49 }, streak:2,  sessions:5  },
+  { name:"Meera S.",  avatar:"M", scores:{ Mathematics:73, Science:81, History:76, English:88, Geography:71 }, streak:8,  sessions:14 },
+  { name:"Raj P.",    avatar:"R", scores:{ Mathematics:91, Science:88, History:82, English:79, Geography:85 }, streak:21, sessions:28 },
+  { name:"Sunita D.", avatar:"S", scores:{ Mathematics:34, Science:41, History:52, English:38, Geography:44 }, streak:0,  sessions:3  },
+  { name:"Dev R.",    avatar:"D", scores:{ Mathematics:67, Science:63, History:71, English:58, Geography:60 }, streak:4,  sessions:9  },
+  { name:"Aisha K.",  avatar:"A", scores:{ Mathematics:79, Science:84, History:77, English:92, Geography:80 }, streak:11, sessions:17 },
 ];
 
 const SUBJECTS = ["Mathematics","Science","History","English","Geography"];
-const WEEKS    = ["Week 1","Week 2","Week 3","Week 4","Week 5","Week 6"];
-const TREND_DATA = {
-  Mathematics: [58,61,63,60,65,68],
-  Science:     [65,67,70,69,72,74],
-  History:     [60,63,62,65,67,70],
-  English:     [70,72,71,74,75,76],
-  Geography:   [55,58,60,59,62,64],
+const WEEKS    = ["W1","W2","W3","W4","W5","W6"];
+const TREND    = {
+  Mathematics:[58,61,63,60,65,68],
+  Science:    [65,67,70,69,72,74],
+  History:    [60,63,62,65,67,70],
+  English:    [70,72,71,74,75,76],
+  Geography:  [55,58,60,59,62,64],
 };
 
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-.an-wrap { min-height:100vh; font-family:'DM Sans',sans-serif; }
-.an-wrap.dark  { background:#070F1C; color:#EDE8DF; }
-.an-wrap.light { background:#F4F6FA; color:#111827; }
-
-.an-card {
-  border-radius:20px;
-  transition:border-color .25s, box-shadow .25s;
-}
-.dark  .an-card { background:rgba(11,22,42,.97); border:1px solid rgba(255,255,255,.07); }
-.light .an-card { background:#fff; border:1px solid #E5E7EB; box-shadow:0 2px 12px rgba(0,0,0,.05); }
-
-.an-tab { padding:8px 18px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; border:none; font-family:'DM Sans',sans-serif; transition:all .2s; }
-.dark  .an-tab        { background:transparent; color:#3D5068; }
-.light .an-tab        { background:transparent; color:#9CA3AF; }
-.dark  .an-tab.active { background:rgba(139,92,246,.14); color:#A78BFA; }
-.light .an-tab.active { background:rgba(139,92,246,.1);  color:#7C3AED; }
-
-.an-stat {
-  border-radius:16px; padding:20px; text-align:center;
-  transition:transform .3s, box-shadow .3s;
-}
-.an-stat:hover { transform:translateY(-4px); box-shadow:0 12px 32px rgba(0,0,0,.12); }
-.dark  .an-stat { background:rgba(11,22,42,.9); border:1px solid rgba(255,255,255,.07); }
-.light .an-stat { background:#fff; border:1px solid #E5E7EB; }
-
-.an-bar-track { height:8px; border-radius:4px; overflow:hidden; }
-.dark  .an-bar-track { background:rgba(255,255,255,.06); }
-.light .an-bar-track { background:#F1F5F9; }
-.an-bar-fill  { height:100%; border-radius:4px; transition:width 1.2s cubic-bezier(.16,1,.3,1); }
-
-.an-row {
-  display:flex; align-items:center; gap:14px; padding:14px 18px;
-  border-radius:14px; margin-bottom:6px; cursor:default;
-  transition:background .2s;
-}
-.dark  .an-row { border:1px solid rgba(255,255,255,.05); }
-.light .an-row { border:1px solid #F1F5F9; }
-.dark  .an-row:hover { background:rgba(255,255,255,.03); }
-.light .an-row:hover { background:#F9FAFB; }
-
-.an-chip {
-  display:inline-flex; align-items:center; gap:5px;
-  padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
-}
-
-@keyframes an-fade-up { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
-.an-fade-up { animation:an-fade-up .5s cubic-bezier(.16,1,.3,1) both; }
-.s1{animation-delay:.05s}.s2{animation-delay:.1s}.s3{animation-delay:.15s}.s4{animation-delay:.2s}.s5{animation-delay:.25s}
-`;
+const SUBJECT_COLORS = {
+  Mathematics: "#c9748e",
+  Science:     "#9b8ed4",
+  History:     "#7aa8c8",
+  English:     "#6a9a88",
+  Geography:   "#c49878",
+};
 
 function avg(scores) {
   const v = Object.values(scores);
   return Math.round(v.reduce((a,b)=>a+b,0)/v.length);
 }
-
-function subjectAvg(sub) {
+function subAvg(sub) {
   return Math.round(STUDENTS.reduce((a,s)=>a+s.scores[sub],0)/STUDENTS.length);
 }
 
-function scoreColor(v) {
-  if (v < 50) return "#EF4444";
-  if (v < 65) return "#F97316";
-  if (v < 78) return "#EAB308";
-  if (v < 88) return "#22C55E";
-  return "#38BDF8";
+function LineChart({ datasets, labels }) {
+  const W=480, H=130, PX=32, PY=16;
+  const allVals = datasets.flatMap(d=>d.data);
+  const mn=Math.min(...allVals)-4, mx=Math.max(...allVals)+4;
+  const xStep=(W-PX*2)/(labels.length-1);
+  const yScale=(H-PY*2)/(mx-mn);
+  const path = data => data.map((v,i)=>`${i===0?"M":"L"}${PX+i*xStep},${H-PY-(v-mn)*yScale}`).join(" ");
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow:"visible" }}>
+      {/* Grid lines */}
+      {[0,0.25,0.5,0.75,1].map((t,i) => (
+        <line key={i} x1={PX} x2={W-PX} y1={PY+t*(H-PY*2)} y2={PY+t*(H-PY*2)}
+          stroke="rgba(232,164,184,0.15)" strokeWidth="1" />
+      ))}
+      {datasets.map((ds,di) => (
+        <g key={di}>
+          <path d={path(ds.data)} fill="none" stroke={ds.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8"/>
+          {ds.data.map((v,i) => (
+            <circle key={i} cx={PX+i*xStep} cy={H-PY-(v-mn)*yScale} r="3" fill={ds.color} opacity="0.9"/>
+          ))}
+        </g>
+      ))}
+      {labels.map((l,i) => (
+        <text key={i} x={PX+i*xStep} y={H+14} textAnchor="middle" fontSize="9"
+          fill="rgba(122,90,104,0.6)" fontFamily="'JetBrains Mono',monospace">{l}</text>
+      ))}
+    </svg>
+  );
 }
 
-// Mini bar chart component
-function BarChart({ data, labels, color }) {
+function BarChart({ data, labels, colors }) {
   const max = Math.max(...data);
   return (
-    <div style={{ display:"flex", alignItems:"flex-end", gap:6, height:80 }}>
+    <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:80 }}>
       {data.map((v,i) => (
         <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-          <span style={{ fontSize:10, fontWeight:700, color }}>{v}</span>
-          <div style={{ width:"100%", borderRadius:4, background:color, opacity:.7+(i/data.length)*.3, height:`${(v/max)*100}%`, minHeight:8, transition:"height 1s cubic-bezier(.16,1,.3,1)" }}/>
-          <span style={{ fontSize:9, color:"#6B7280", whiteSpace:"nowrap" }}>{labels[i]}</span>
+          <span style={{ fontSize:10, fontWeight:700, color:colors[i], fontFamily:"'JetBrains Mono',monospace" }}>{v}</span>
+          <div style={{ width:"100%", borderRadius:"4px 4px 0 0", background:colors[i], opacity:0.65, height:`${(v/max)*68}px`, minHeight:6, transition:"height 1s cubic-bezier(.16,1,.3,1)" }}/>
+          <span style={{ fontSize:9, color:"var(--text-soft)", textAlign:"center", lineHeight:1.2 }}>{labels[i]}</span>
         </div>
       ))}
     </div>
   );
 }
 
-// Line chart SVG
-function LineChart({ datasets, labels, dark }) {
-  const W=460, H=120, PAD=20;
-  const allVals = datasets.flatMap(d=>d.data);
-  const min=Math.min(...allVals)-5, max=Math.max(...allVals)+5;
-  const xStep=(W-PAD*2)/(labels.length-1);
-  const yScale=(H-PAD*2)/(max-min);
-
-  const path = (data) => data.map((v,i)=>`${i===0?"M":"L"}${PAD+i*xStep},${H-PAD-(v-min)*yScale}`).join(" ");
-
-  return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow:"visible" }}>
-      {datasets.map((ds,di) => (
-        <g key={di}>
-          <path d={path(ds.data)} fill="none" stroke={ds.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity={.85}/>
-          {ds.data.map((v,i) => (
-            <circle key={i} cx={PAD+i*xStep} cy={H-PAD-(v-min)*yScale} r="3.5" fill={ds.color}/>
-          ))}
-        </g>
-      ))}
-      {labels.map((l,i) => (
-        <text key={i} x={PAD+i*xStep} y={H+4} textAnchor="middle" fontSize="9" fill={dark?"#3D5068":"#9CA3AF"}>{l}</text>
-      ))}
-    </svg>
-  );
-}
-
 export default function Analytics() {
-  const { dark } = useApp();
-  const theme = dark ? "dark" : "light";
   const [tab, setTab] = useState("overview");
   const [selSubject, setSelSubject] = useState("Mathematics");
 
-  const M = dark ? "#4B5568" : "#9CA3AF";
-  const T = dark ? "#EDE8DF" : "#111827";
+  const sorted     = [...STUDENTS].sort((a,b) => avg(b.scores)-avg(a.scores));
+  const atRisk     = STUDENTS.filter(s => avg(s.scores) < 60 || s.streak === 0);
+  const overallAvg = Math.round(STUDENTS.reduce((a,s)=>a+avg(s.scores),0)/STUDENTS.length);
 
-  const sorted    = [...STUDENTS].sort((a,b) => avg(b.scores)-avg(a.scores));
-  const atRisk    = STUDENTS.filter(s => avg(s.scores) < 60 || s.streak === 0);
-  const overallAvg= Math.round(STUDENTS.reduce((a,s)=>a+avg(s.scores),0)/STUDENTS.length);
-
-  const lineDatasets = SUBJECTS.map(sub => ({
-    label: sub, color: scoreColor(subjectAvg(sub)), data: TREND_DATA[sub]
-  }));
+  const lineDatasets = SUBJECTS.map(sub => ({ label:sub, color:SUBJECT_COLORS[sub], data:TREND[sub] }));
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: CSS }} />
-     
-        <div className={`an-wrap ${theme}`}>
-          <div style={{ maxWidth:960, margin:"0 auto", padding:"28px 24px 80px" }}>
+      <style>{GLASS_CSS}</style>
+      <div className="gl-root">
+        <div className="gl-orb" style={{ width:350, height:350, background:"rgba(197,184,232,0.16)", top:-80, right:0 }} />
+        <div className="gl-orb" style={{ width:280, height:280, background:"rgba(232,164,184,0.14)", bottom:0, left:"-5%" }} />
 
-            {/* Header */}
-            <div className="an-fade-up" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12, marginBottom:26 }}>
-              <div>
-                <h1 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, marginBottom:4, color:T }}>📊 Class Analytics</h1>
-                <p style={{ fontSize:13, color:M }}>Class XII · Section A · 28 students · Real-time performance data</p>
-              </div>
-              <div style={{ display:"flex", gap:4 }}>
-                {["overview","subjects","students"].map(t => (
-                  <button key={t} className={`an-tab ${tab===t?"active":""}`} onClick={()=>setTab(t)}>
-                    {t.charAt(0).toUpperCase()+t.slice(1)}
-                  </button>
+        <div className="gl-content" style={{ maxWidth:960, margin:"0 auto", padding:"36px 28px 80px" }}>
+
+          {/* Header */}
+          <div className="gl-fade-up" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:16, marginBottom:32 }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:600, color:"var(--text-soft)", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:8 }}>Class XII · Section A</div>
+              <h1 className="gl-page-title">Class Analytics</h1>
+              <p style={{ fontSize:13, color:"var(--text-soft)", marginTop:6 }}>28 students · Real-time performance data</p>
+            </div>
+            <div className="gl-tabs">
+              {["overview","subjects","students"].map(t => (
+                <button key={t} className={`gl-tab ${tab===t?"active":""}`} onClick={()=>setTab(t)}>
+                  {t.charAt(0).toUpperCase()+t.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Overview */}
+          {tab === "overview" && (
+            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+              {/* Top stats */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14 }} className="gl-fade-up d1">
+                {[
+                  { label:"Class Average", val:`${overallAvg}%`, color:"#c9748e" },
+                  { label:"Top Scorer",    val:sorted[0].name.split(" ")[0], color:"#6a9a88" },
+                  { label:"At Risk",       val:atRisk.length, color:"#c04040" },
+                  { label:"Avg Sessions",  val:Math.round(STUDENTS.reduce((a,s)=>a+s.sessions,0)/STUDENTS.length), color:"#7b68bb" },
+                ].map(s => (
+                  <div key={s.label} className="gl-stat">
+                    <div style={{ fontSize:11, fontWeight:600, color:"var(--text-soft)", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:10 }}>{s.label}</div>
+                    <div style={{ fontSize:28, fontWeight:700, color:s.color, fontFamily:"'Instrument Serif',serif", fontStyle:"italic" }}>{s.val}</div>
+                  </div>
                 ))}
               </div>
-            </div>
 
-            {/* ── OVERVIEW ── */}
-            {tab==="overview" && (
-              <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
-
-                {/* Stat pills */}
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12 }}>
-                  {[
-                    { val:`${overallAvg}%`,         label:"Class Average",    icon:"📈", color:"#38BDF8" },
-                    { val:`${atRisk.length}`,         label:"At Risk",          icon:"🚨", color:"#EF4444" },
-                    { val:`${STUDENTS.filter(s=>s.streak>=7).length}`, label:"Active Streaks", icon:"🔥", color:"#F59E0B" },
-                    { val:"3",                        label:"Assessments",      icon:"📋", color:"#22C55E" },
-                    { val:"86%",                      label:"Submission Rate",  icon:"✅", color:"#8B5CF6" },
-                  ].map((s,i) => (
-                    <div key={s.label} className={`an-stat an-fade-up s${i+1}`}>
-                      <div style={{ fontSize:24, marginBottom:8 }}>{s.icon}</div>
-                      <div style={{ fontFamily:"'Syne',sans-serif", fontSize:24, fontWeight:800, color:s.color, lineHeight:1 }}>{s.val}</div>
-                      <div style={{ fontSize:11, fontWeight:700, color:T, marginTop:4 }}>{s.label}</div>
+              {/* Line chart */}
+              <div className="gl-card gl-fade-up d2" style={{ padding:26 }}>
+                <div className="gl-section-title">Score Trends (6 Weeks)</div>
+                <LineChart datasets={lineDatasets} labels={WEEKS} />
+                <div style={{ display:"flex", flexWrap:"wrap", gap:16, marginTop:16 }}>
+                  {SUBJECTS.map(sub => (
+                    <div key={sub} style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <div style={{ width:20, height:3, borderRadius:2, background:SUBJECT_COLORS[sub] }} />
+                      <span style={{ fontSize:11, color:"var(--text-soft)" }}>{sub}</span>
                     </div>
                   ))}
                 </div>
-
-                {/* 6-week trend */}
-                <div className="an-card an-fade-up s2" style={{ padding:24 }}>
-                  <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, letterSpacing:".06em", textTransform:"uppercase", color:M, marginBottom:6 }}>6-Week Score Trend</h3>
-                  <p style={{ fontSize:12, color:M, marginBottom:16 }}>Average score per subject across the last 6 weeks</p>
-                  <LineChart datasets={lineDatasets} labels={WEEKS} dark={dark}/>
-                  <div style={{ display:"flex", flexWrap:"wrap", gap:12, marginTop:14 }}>
-                    {SUBJECTS.map(sub => (
-                      <div key={sub} style={{ display:"flex", alignItems:"center", gap:6 }}>
-                        <div style={{ width:10, height:10, borderRadius:2, background:scoreColor(subjectAvg(sub)) }}/>
-                        <span style={{ fontSize:11, color:M, fontWeight:600 }}>{sub}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Subject averages */}
-                <div className="an-card an-fade-up s3" style={{ padding:24 }}>
-                  <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, letterSpacing:".06em", textTransform:"uppercase", color:M, marginBottom:18 }}>Subject Averages</h3>
-                  {SUBJECTS.map(sub => {
-                    const a = subjectAvg(sub);
-                    const c = scoreColor(a);
-                    return (
-                      <div key={sub} style={{ marginBottom:14 }}>
-                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6, fontSize:13 }}>
-                          <span style={{ fontWeight:600, color:T }}>{sub}</span>
-                          <span style={{ fontWeight:800, color:c }}>{a}%</span>
-                        </div>
-                        <div className="an-bar-track">
-                          <div className="an-bar-fill" style={{ width:`${a}%`, background:c }}/>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* At risk */}
-                {atRisk.length > 0 && (
-                  <div className="an-card an-fade-up s4" style={{ padding:22 }}>
-                    <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, letterSpacing:".06em", textTransform:"uppercase", color:"#EF4444", marginBottom:14 }}>
-                      ⚠️ At-Risk Students ({atRisk.length})
-                    </h3>
-                    {atRisk.map(s => (
-                      <div key={s.name} className="an-row">
-                        <div style={{ width:36,height:36,borderRadius:11,background:`linear-gradient(135deg,#EF4444,#F97316)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"white",flexShrink:0 }}>{s.avatar}</div>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:14, fontWeight:700, color:T }}>{s.name}</div>
-                          <div style={{ fontSize:11, color:M }}>Avg: {avg(s.scores)}% · Streak: {s.streak} days</div>
-                        </div>
-                        <span className="an-chip" style={{ background:"rgba(239,68,68,.12)", color:"#EF4444" }}>
-                          {s.streak===0 ? "Inactive" : "Low Scores"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-            )}
 
-            {/* ── SUBJECTS ── */}
-            {tab==="subjects" && (
-              <div style={{ display:"grid", gridTemplateColumns:"200px 1fr", gap:18, alignItems:"start" }}>
-                <div className="an-card" style={{ padding:16 }}>
-                  <p style={{ fontSize:11, fontWeight:800, letterSpacing:".08em", textTransform:"uppercase", color:M, marginBottom:10 }}>Select Subject</p>
-                  {SUBJECTS.map(sub => {
-                    const a = subjectAvg(sub);
-                    return (
-                      <button key={sub} onClick={()=>setSelSubject(sub)}
-                        style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"10px 12px", borderRadius:11, border:"none", cursor:"pointer", marginBottom:3, transition:"all .2s",
-                          background: selSubject===sub ? "rgba(139,92,246,.14)" : "transparent",
-                          color: selSubject===sub ? "#A78BFA" : M,
-                        }}>
-                        <span style={{ fontSize:13, fontWeight:600 }}>{sub}</span>
-                        <span style={{ fontSize:12, fontWeight:800, color:scoreColor(a) }}>{a}%</span>
-                      </button>
-                    );
-                  })}
+              {/* Subject bars */}
+              <div className="gl-card gl-fade-up d3" style={{ padding:26 }}>
+                <div className="gl-section-title">Subject Averages</div>
+                <BarChart
+                  data={SUBJECTS.map(s => subAvg(s))}
+                  labels={SUBJECTS}
+                  colors={SUBJECTS.map(s => SUBJECT_COLORS[s])}
+                />
+              </div>
+
+              {/* At risk */}
+              {atRisk.length > 0 && (
+                <div className="gl-card gl-fade-up d4" style={{ padding:24 }}>
+                  <div className="gl-section-title">Students Needing Attention</div>
+                  {atRisk.map((s,i) => (
+                    <div key={i} className="gl-row">
+                      <div className="gl-avatar" style={{ width:36, height:36, borderRadius:10, background:AVATAR_GRADIENTS[i%AVATAR_GRADIENTS.length], fontSize:13 }}>{s.avatar}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:600, color:"var(--text)" }}>{s.name}</div>
+                        <div style={{ fontSize:11, color:"var(--text-soft)" }}>
+                          {s.streak===0?"No active streak · ":""}Avg: {avg(s.scores)}%
+                        </div>
+                      </div>
+                      <span className="gl-pill gl-pill-err" style={{ fontSize:10 }}>{avg(s.scores) < 50 ? "Critical" : "At Risk"}</span>
+                    </div>
+                  ))}
                 </div>
+              )}
+            </div>
+          )}
 
-                <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                  <div className="an-card an-fade-up" style={{ padding:24 }}>
-                    <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:18, fontWeight:800, color:T, marginBottom:4 }}>{selSubject}</h2>
-                    <p style={{ fontSize:12, color:M, marginBottom:20 }}>Class average: <span style={{ color:scoreColor(subjectAvg(selSubject)), fontWeight:700 }}>{subjectAvg(selSubject)}%</span></p>
-                    <BarChart data={TREND_DATA[selSubject]} labels={WEEKS} color={scoreColor(subjectAvg(selSubject))}/>
+          {/* Subjects */}
+          {tab === "subjects" && (
+            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }} className="gl-fade-up d1">
+                {SUBJECTS.map(sub => (
+                  <button key={sub} className={`gl-btn ${selSubject===sub?"gl-btn-primary":"gl-btn-ghost"}`}
+                    style={{ fontSize:12, padding:"8px 18px" }}
+                    onClick={() => setSelSubject(sub)}>
+                    {sub}
+                  </button>
+                ))}
+              </div>
+
+              <div className="gl-card gl-fade-up d2" style={{ padding:26 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
+                  <div style={{ width:10, height:10, borderRadius:"50%", background:SUBJECT_COLORS[selSubject], boxShadow:`0 0 12px ${SUBJECT_COLORS[selSubject]}` }} />
+                  <div className="gl-section-title" style={{ marginBottom:0 }}>{selSubject} — Trend</div>
+                  <div style={{ marginLeft:"auto", fontSize:24, fontWeight:700, color:SUBJECT_COLORS[selSubject], fontFamily:"'Instrument Serif',serif", fontStyle:"italic" }}>
+                    {subAvg(selSubject)}% avg
                   </div>
+                </div>
+                <LineChart datasets={[{ label:selSubject, color:SUBJECT_COLORS[selSubject], data:TREND[selSubject] }]} labels={WEEKS} />
+              </div>
 
-                  <div className="an-card an-fade-up s2" style={{ padding:24 }}>
-                    <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:800, letterSpacing:".08em", textTransform:"uppercase", color:M, marginBottom:14 }}>Student Breakdown</h3>
-                    {[...STUDENTS].sort((a,b)=>b.scores[selSubject]-a.scores[selSubject]).map(s => {
-                      const sc = s.scores[selSubject];
-                      const c  = scoreColor(sc);
+              <div className="gl-card gl-fade-up d3">
+                <div style={{ padding:"18px 22px", borderBottom:"1px solid rgba(232,164,184,0.2)" }}>
+                  <div className="gl-section-title" style={{ marginBottom:0 }}>{selSubject} — Student Breakdown</div>
+                </div>
+                {[...STUDENTS].sort((a,b)=>b.scores[selSubject]-a.scores[selSubject]).map((s,i) => {
+                  const val = s.scores[selSubject];
+                  const c = scoreTheme(val);
+                  return (
+                    <div key={i} className="gl-row" style={{ padding:"14px 22px" }}>
+                      <div className="gl-avatar" style={{ width:34, height:34, borderRadius:10, background:AVATAR_GRADIENTS[i%AVATAR_GRADIENTS.length], fontSize:12 }}>{s.avatar}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:600, color:"var(--text)", marginBottom:4 }}>{s.name}</div>
+                        <div className="gl-prog-track">
+                          <div className="gl-prog-fill" style={{ width:`${val}%`, background:`linear-gradient(90deg,${c.text}44,${c.text})` }} />
+                        </div>
+                      </div>
+                      <span className="gl-score mono" style={{ background:c.bg, color:c.text, border:`1px solid ${c.border}`, marginLeft:12 }}>{val}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Students */}
+          {tab === "students" && (
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              {sorted.map((s, i) => (
+                <div key={i} className={`gl-card gl-fade-up d${Math.min(i+1,6)}`} style={{ padding:22 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:16 }}>
+                    <div style={{ position:"relative" }}>
+                      <div className="gl-avatar" style={{ width:46, height:46, borderRadius:13, background:AVATAR_GRADIENTS[i%AVATAR_GRADIENTS.length], fontSize:16 }}>{s.avatar}</div>
+                      {i < 3 && (
+                        <div style={{ position:"absolute", top:-6, right:-6, width:18, height:18, borderRadius:"50%", background:["#c9748e","#9b8ed4","#7aa8c8"][i], display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:800, color:"white" }}>
+                          {i+1}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:3 }}>{s.name}</div>
+                      <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                        <span className="gl-pill" style={{ fontSize:10 }}>Avg: {avg(s.scores)}%</span>
+                        <span className={`gl-pill ${s.streak>7?"gl-pill-ok":"gl-pill-warn"}`} style={{ fontSize:10 }}>{s.streak}d streak</span>
+                        <span className="gl-pill gl-pill-mauve" style={{ fontSize:10 }}>{s.sessions} sessions</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:8 }}>
+                    {SUBJECTS.map(sub => {
+                      const val = s.scores[sub];
+                      const c = scoreTheme(val);
                       return (
-                        <div key={s.name} style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
-                          <div style={{ width:28,height:28,borderRadius:9,background:c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"white",flexShrink:0,opacity:.85 }}>{s.avatar}</div>
-                          <span style={{ fontSize:13, fontWeight:600, color:T, width:90, flexShrink:0 }}>{s.name}</span>
-                          <div className="an-bar-track" style={{ flex:1 }}>
-                            <div className="an-bar-fill" style={{ width:`${sc}%`, background:c }}/>
+                        <div key={sub} style={{ textAlign:"center" }}>
+                          <div style={{ fontSize:9, color:"var(--text-soft)", marginBottom:5, fontWeight:600 }}>{sub.slice(0,4)}</div>
+                          <div className="gl-prog-track" style={{ marginBottom:5 }}>
+                            <div className="gl-prog-fill" style={{ width:`${val}%`, background:`linear-gradient(90deg,${c.text}44,${c.text})` }} />
                           </div>
-                          <span style={{ fontSize:13, fontWeight:800, color:c, width:36, textAlign:"right" }}>{sc}</span>
+                          <span style={{ fontSize:11, fontWeight:700, color:c.text, fontFamily:"'JetBrains Mono',monospace" }}>{val}</span>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* ── STUDENTS ── */}
-            {tab==="students" && (
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                <div className="an-card an-fade-up" style={{ padding:"16px 20px", display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-                  <span style={{ fontSize:12, color:M, fontWeight:600 }}>Sorted by average score · highest first</span>
-                  <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
-                    {[["#EF4444","<60"],["#F97316","60–74"],["#22C55E","75–87"],["#38BDF8","88+"]].map(([c,l])=>(
-                      <span key={l} style={{ fontSize:11, color:c, fontWeight:700, display:"flex", alignItems:"center", gap:4 }}>
-                        <span style={{ width:8,height:8,borderRadius:2,background:c,display:"inline-block" }}/>
-                        {l}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                {sorted.map((s,i) => {
-                  const a = avg(s.scores);
-                  const c = scoreColor(a);
-                  return (
-                    <div key={s.name} className={`an-card an-fade-up`} style={{ padding:"18px 22px", animationDelay:`${i*.04}s` }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:12 }}>
-                        <span style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, color:M, width:22 }}>#{i+1}</span>
-                        <div style={{ width:38,height:38,borderRadius:12,background:`linear-gradient(135deg,${c}99,${c})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"white" }}>{s.avatar}</div>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:14, fontWeight:700, color:T }}>{s.name}</div>
-                          <div style={{ fontSize:11, color:M }}>🔥 {s.streak} day streak · {s.sessions} sessions</div>
-                        </div>
-                        <div style={{ textAlign:"right" }}>
-                          <div style={{ fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, color:c, lineHeight:1 }}>{a}%</div>
-                          <div style={{ fontSize:11, color:M }}>avg score</div>
-                        </div>
-                      </div>
-                      <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                        {SUBJECTS.map(sub => {
-                          const sc = s.scores[sub];
-                          const sc_c = scoreColor(sc);
-                          return (
-                            <span key={sub} style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:20, background:`${sc_c}18`, color:sc_c, border:`1px solid ${sc_c}30` }}>
-                              {sub.slice(0,3)}: {sc}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-  
+      </div>
     </>
   );
 }

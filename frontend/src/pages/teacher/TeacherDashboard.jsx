@@ -1,29 +1,22 @@
 /**
- * TeacherDashboard.jsx — PathwayAI Teacher Dashboard
- * - Struggle Score heatmap (student x subject, colour-coded)
- * - At-risk alert strip with names
- * - Class health stats with sparklines
- * - Expandable student rows with recommendations
- * - Recent assessments + upcoming sessions
- * - Quick-action buttons to other teacher pages
+ * TeacherDashboard.jsx — PathwayAI
+ * Glassmorphism soft pink calm aesthetic
  */
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { GLASS_CSS, scoreTheme, AVATAR_GRADIENTS } from "./glassTheme";
 
-import { useApp } from "../../context/AppContext";
-
-const SUBJECTS = ["Mathematics", "Science", "History", "English", "Geography"];
+const SUBJECTS = ["Mathematics","Science","History","English","Geography"];
 
 const STUDENTS = [
-  { name:"Rahul K.",  avatar:"R", grad:"from-sky-500 to-blue-600",     scores:{ Mathematics:45, Science:72, History:68, English:61, Geography:55 }, streak:5,  sessions:8,  lastActive:"Today" },
-  { name:"Priya M.",  avatar:"P", grad:"from-teal-500 to-cyan-600",    scores:{ Mathematics:88, Science:79, History:91, English:94, Geography:82 }, streak:14, sessions:21, lastActive:"Today" },
-  { name:"Arjun T.",  avatar:"A", grad:"from-violet-500 to-purple-600",scores:{ Mathematics:62, Science:55, History:48, English:52, Geography:49 }, streak:2,  sessions:5,  lastActive:"2d ago" },
-  { name:"Meera S.",  avatar:"M", grad:"from-amber-500 to-orange-500", scores:{ Mathematics:73, Science:81, History:76, English:88, Geography:71 }, streak:8,  sessions:14, lastActive:"Today" },
-  { name:"Raj P.",    avatar:"R", grad:"from-green-500 to-emerald-600",scores:{ Mathematics:91, Science:88, History:82, English:79, Geography:85 }, streak:21, sessions:28, lastActive:"Today" },
-  { name:"Sunita D.", avatar:"S", grad:"from-red-500 to-rose-600",     scores:{ Mathematics:34, Science:41, History:52, English:38, Geography:44 }, streak:0,  sessions:3,  lastActive:"5d ago" },
-  { name:"Dev R.",    avatar:"D", grad:"from-indigo-500 to-blue-600",  scores:{ Mathematics:67, Science:63, History:71, English:58, Geography:60 }, streak:4,  sessions:9,  lastActive:"Yesterday" },
-  { name:"Aisha K.",  avatar:"A", grad:"from-pink-500 to-rose-500",    scores:{ Mathematics:79, Science:84, History:77, English:92, Geography:80 }, streak:11, sessions:17, lastActive:"Today" },
+  { name:"Rahul K.",  avatar:"R", scores:{ Mathematics:45, Science:72, History:68, English:61, Geography:55 }, streak:5,  sessions:8,  lastActive:"Today" },
+  { name:"Priya M.",  avatar:"P", scores:{ Mathematics:88, Science:79, History:91, English:94, Geography:82 }, streak:14, sessions:21, lastActive:"Today" },
+  { name:"Arjun T.",  avatar:"A", scores:{ Mathematics:62, Science:55, History:48, English:52, Geography:49 }, streak:2,  sessions:5,  lastActive:"2d ago" },
+  { name:"Meera S.",  avatar:"M", scores:{ Mathematics:73, Science:81, History:76, English:88, Geography:71 }, streak:8,  sessions:14, lastActive:"Today" },
+  { name:"Raj P.",    avatar:"R", scores:{ Mathematics:91, Science:88, History:82, English:79, Geography:85 }, streak:21, sessions:28, lastActive:"Today" },
+  { name:"Sunita D.", avatar:"S", scores:{ Mathematics:34, Science:41, History:52, English:38, Geography:44 }, streak:0,  sessions:3,  lastActive:"5d ago" },
+  { name:"Dev R.",    avatar:"D", scores:{ Mathematics:67, Science:63, History:71, English:58, Geography:60 }, streak:4,  sessions:9,  lastActive:"Yesterday" },
+  { name:"Aisha K.",  avatar:"A", scores:{ Mathematics:79, Science:84, History:77, English:92, Geography:80 }, streak:11, sessions:17, lastActive:"Today" },
 ];
 
 const ASSESSMENTS = [
@@ -33,263 +26,267 @@ const ASSESSMENTS = [
 ];
 
 const UPCOMING = [
-  { title:"Remedial: Algebra Basics", type:"Remedial",  students:"Rahul, Sunita, Arjun", time:"Today 3 PM",    icon:"📐" },
-  { title:"Ch.5 Chemical Reactions",  type:"New Topic", students:"All students",          time:"Tomorrow 9 AM", icon:"⚗️" },
-  { title:"Mid-Term Revision",        type:"Revision",  students:"All students",          time:"Dec 5, 10 AM",  icon:"📋" },
+  { title:"Remedial: Algebra Basics", type:"Remedial",  students:"Rahul, Sunita, Arjun", time:"Today 3 PM" },
+  { title:"Ch.5 Chemical Reactions",  type:"New Topic", students:"All students",          time:"Tomorrow 9 AM" },
+  { title:"Mid-Term Revision",        type:"Revision",  students:"All students",          time:"Dec 5, 10 AM" },
 ];
-
-function scoreColor(val) {
-  if (val < 50) return { bg:"#EF4444", fg:"#fff" };
-  if (val < 65) return { bg:"#F97316", fg:"#fff" };
-  if (val < 78) return { bg:"#EAB308", fg:"#1e293b" };
-  if (val < 88) return { bg:"#22C55E", fg:"#fff" };
-  return               { bg:"#0EA5E9", fg:"#fff" };
-}
 
 function avgScore(s) {
   const v = Object.values(s.scores);
-  return Math.round(v.reduce((a, b) => a + b, 0) / v.length);
+  return Math.round(v.reduce((a,b) => a+b,0)/v.length);
 }
 
 function classAvg(sub) {
-  return Math.round(STUDENTS.reduce((a, s) => a + s.scores[sub], 0) / STUDENTS.length);
+  return Math.round(STUDENTS.reduce((a,s) => a+s.scores[sub],0)/STUDENTS.length);
 }
 
-function Spark({ vals, color }) {
-  const max = Math.max(...vals);
+function Sparkline({ vals, color }) {
+  const max = Math.max(...vals), min = Math.min(...vals);
+  const W = 60, H = 24, PAD = 2;
+  const xStep = (W - PAD*2)/(vals.length-1);
+  const yScale = (H - PAD*2) / Math.max(max - min, 1);
+  const d = vals.map((v,i) => `${i===0?"M":"L"}${PAD+i*xStep},${H-PAD-(v-min)*yScale}`).join(" ");
   return (
-    <div className="flex items-end gap-0.5 h-8">
-      {vals.map((v, i) => (
-        <div key={i} className="flex-1 rounded-sm"
-          style={{ height: `${Math.max(10, (v / max) * 100)}%`, background: color, opacity: 0.4 + i * 0.09 }} />
-      ))}
-    </div>
+    <svg width={W} height={H} style={{ overflow:"visible" }}>
+      <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+      <circle cx={PAD+(vals.length-1)*xStep} cy={H-PAD-(vals[vals.length-1]-min)*yScale} r="2.5" fill={color} />
+    </svg>
   );
 }
 
+const EXTRA_CSS = `
+.td-heatmap td, .td-heatmap th { white-space: nowrap; }
+.td-heatmap tr:hover td { background: rgba(232,164,184,0.05); }
+.td-row-expanded td { background: rgba(252,232,237,0.4) !important; }
+.td-quick-card {
+  background: rgba(255,248,252,0.65);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(232,164,184,0.22);
+  border-radius: 18px; padding: 22px;
+  cursor: pointer; transition: all 0.25s;
+  box-shadow: 0 4px 16px rgba(201,116,142,0.06), inset 0 1px 0 rgba(255,255,255,0.8);
+  text-align: left;
+}
+.td-quick-card:hover { transform: translateY(-3px); box-shadow: 0 10px 32px rgba(201,116,142,0.12), inset 0 1px 0 rgba(255,255,255,0.9); border-color: rgba(201,116,142,0.35); }
+.td-quick-card:disabled { cursor: default; transform: none; }
+`;
+
 export default function TeacherDashboard() {
-  const { dark } = useApp();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(null);
   const [hlCol, setHlCol] = useState(null);
 
-  const bg      = dark ? "bg-slate-950" : "bg-slate-50";
-  const card    = dark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200";
-  const text    = dark ? "text-white" : "text-slate-900";
-  const muted   = dark ? "text-slate-400" : "text-slate-500";
-  const divider = dark ? "border-slate-800" : "border-slate-200";
-
-  const overallAvg  = Math.round(STUDENTS.reduce((a, s) => a + avgScore(s), 0) / STUDENTS.length);
+  const overallAvg  = Math.round(STUDENTS.reduce((a,s) => a+avgScore(s),0)/STUDENTS.length);
   const activeCount = STUDENTS.filter(s => s.streak >= 7).length;
   const atRisk      = STUDENTS.filter(s => Object.values(s.scores).some(v => v < 50) || s.streak === 0);
 
+  const typeColor = type =>
+    type === "Remedial" ? "gl-pill-err" :
+    type === "New Topic" ? "gl-pill-lav" : "gl-pill-mauve";
+
   return (
+    <>
+      <style>{GLASS_CSS + EXTRA_CSS}</style>
+      <div className="gl-root">
+        {/* Background orbs */}
+        <div className="gl-orb" style={{ width:400, height:400, background:"rgba(232,164,184,0.18)", top:-100, left:-100 }} />
+        <div className="gl-orb" style={{ width:300, height:300, background:"rgba(197,184,232,0.14)", top:200, right:-80, animationDelay:"3s" }} />
+        <div className="gl-orb" style={{ width:250, height:250, background:"rgba(168,197,184,0.12)", bottom:100, left:"40%", animationDelay:"6s" }} />
 
-      <div className={`min-h-screen ${bg} p-6 md:p-8`}>
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="gl-content" style={{ maxWidth:1100, margin:"0 auto", padding:"36px 28px 80px" }}>
 
-          {/* ── Header ── */}
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          {/* Header */}
+          <div className="gl-fade-up" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:16, marginBottom:32 }}>
             <div>
-              <h1 className={`font-display text-3xl italic mb-1 ${text}`}>📊 Teacher Dashboard</h1>
-              <p className={`text-sm ${muted}`}>Real-time class overview · Struggle Score heatmap · Mrs. Sunita Deshpande</p>
+              <div style={{ fontSize:12, fontWeight:600, color:"var(--text-soft)", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:8 }}>
+                Good morning, Mrs. Deshpande
+              </div>
+              <h1 className="gl-page-title">Teacher Dashboard</h1>
+              <p style={{ fontSize:13, color:"var(--text-soft)", marginTop:6 }}>
+                Class XII · Section A · Real-time overview
+              </p>
             </div>
-            <div className="flex gap-3">
-              <button onClick={() => navigate("/teacher/assessment")}
-                className="text-xs font-bold text-white bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2.5 rounded-xl shadow-lg hover:-translate-y-0.5 transition-all">
-                + New Assessment
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+              <button className="gl-btn gl-btn-primary" onClick={() => navigate("/teacher/assessment")}>
+                New Assessment
               </button>
-              <button onClick={() => navigate("/teacher/analytics")}
-                className={`text-xs font-bold px-4 py-2.5 rounded-xl border-2 transition-all ${dark ? "border-slate-700 text-slate-300 hover:border-sky-600 hover:text-sky-300" : "border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-600"}`}>
-                Full Analytics →
+              <button className="gl-btn gl-btn-ghost" onClick={() => navigate("/teacher/analytics")}>
+                Full Analytics
               </button>
-              <button onClick={() => navigate("/teacher/videocall")}
-                className={`text-xs font-bold px-4 py-2.5 rounded-xl border-2 transition-all ${dark ? "border-slate-700 text-slate-300 hover:border-sky-600 hover:text-sky-300" : "border-slate-200 text-slate-600 hover:border-sky-400 hover:text-sky-600"}`}>
-                Video Call →
+              <button className="gl-btn gl-btn-ghost" onClick={() => navigate("/teacher/videocall")}>
+                Video Call
               </button>
             </div>
           </div>
 
-          {/* ── At-risk alert ── */}
+          {/* At-risk alert */}
           {atRisk.length > 0 && (
-            <div className={`rounded-2xl p-4 flex items-start gap-4 ${dark ? "bg-red-900/20 border border-red-800/40" : "bg-red-50 border border-red-200"}`}>
-              <span className="text-2xl shrink-0">⚠️</span>
-              <div className="flex-1">
-                <p className="text-red-400 font-bold text-sm mb-2">{atRisk.length} students need immediate attention</p>
-                <div className="flex flex-wrap gap-2">
+            <div className="gl-alert gl-fade-up d1" style={{ display:"flex", gap:16, marginBottom:24, alignItems:"flex-start" }}>
+              <div style={{ width:32, height:32, borderRadius:10, background:"rgba(220,100,100,0.12)", border:"1px solid rgba(220,100,100,0.2)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:15 }}>!</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:"#b04040", marginBottom:8 }}>
+                  {atRisk.length} students need attention
+                </div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
                   {atRisk.map(s => (
-                    <span key={s.name} className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
-                      {s.name} {s.streak === 0 ? "· no streak" : "· low scores"}
+                    <span key={s.name} className="gl-pill gl-pill-err" style={{ fontSize:11 }}>
+                      {s.name} · {s.streak === 0 ? "inactive" : "low scores"}
                     </span>
                   ))}
                 </div>
               </div>
-              <button onClick={() => navigate("/teacher/analytics")} className="text-xs font-bold text-red-400 hover:underline shrink-0 mt-0.5">
-                Details →
+              <button className="gl-btn gl-btn-ghost gl-btn-sm" onClick={() => navigate("/teacher/analytics")}>
+                Details
               </button>
             </div>
           )}
 
-          {/* ── Stats ── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Stats */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:24 }}>
             {[
-              { label:"Class Avg Score",   val:`${overallAvg}%`,               icon:"📈", color:"#38BDF8", spark:[58,62,65,61,68,70,overallAvg] },
-              { label:"7-Day Streaks",     val:`${activeCount}/${STUDENTS.length}`, icon:"🔥", color:"#F59E0B", spark:[3,4,4,5,5,6,activeCount] },
-              { label:"At-Risk Students",  val:atRisk.length,                   icon:"🚨", color:"#EF4444", spark:[5,4,4,4,3,3,atRisk.length] },
-              { label:"Assessments Sent",  val:ASSESSMENTS.length,              icon:"📋", color:"#22C55E", spark:[0,1,1,2,2,3,ASSESSMENTS.length] },
-            ].map(s => (
-              <div key={s.label} className={`rounded-2xl border p-5 ${card}`}>
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <p className={`text-xs font-semibold mb-1 ${muted}`}>{s.label}</p>
-                    <p className="text-2xl font-black" style={{ color: s.color }}>{s.val}</p>
-                  </div>
-                  <span className="text-2xl">{s.icon}</span>
+              { label:"Class Average", val:`${overallAvg}%`, color:"#c9748e", spark:[58,62,65,61,68,70,overallAvg], style:"--top-color:#e8a4b8" },
+              { label:"Active Streaks", val:`${activeCount}/${STUDENTS.length}`, color:"#9b8ed4", spark:[3,4,4,5,5,6,activeCount], style:"--top-color:#c5b8e8" },
+              { label:"At Risk",        val:atRisk.length, color:"#c04040", spark:[5,4,4,4,3,3,atRisk.length], style:"--top-color:rgba(220,100,100,0.6)" },
+              { label:"Assessments",    val:ASSESSMENTS.length, color:"#4a7a64", spark:[0,1,1,2,2,3,ASSESSMENTS.length], style:"--top-color:#a8c5b8" },
+            ].map((s, i) => (
+              <div key={s.label} className={`gl-stat gl-fade-up d${i+2}`} style={{ [s.style.split(":")[0].replace("--","")]: undefined }}>
+                <style>{`.gl-stat-${i}::before{background:${s.color}!important}`}</style>
+                <div className={`gl-stat gl-stat-${i}`} style={{ padding:0, background:"transparent", border:"none", boxShadow:"none" }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:"var(--text-soft)", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:10 }}>{s.label}</div>
+                  <div style={{ fontSize:26, fontWeight:700, color:s.color, fontFamily:"'Instrument Serif',serif", fontStyle:"italic", marginBottom:10 }}>{s.val}</div>
+                  <Sparkline vals={s.spark} color={s.color} />
                 </div>
-                <Spark vals={s.spark} color={s.color} />
               </div>
             ))}
           </div>
 
-          {/* ── Heatmap ── */}
-          <div className={`rounded-2xl border overflow-hidden ${card}`}>
-            <div className={`px-5 py-4 border-b ${divider} flex flex-wrap items-center justify-between gap-3`}>
+          {/* Heatmap */}
+          <div className="gl-card gl-fade-up d3" style={{ marginBottom:24, overflow:"hidden" }}>
+            <div style={{ padding:"20px 24px", borderBottom:"1px solid rgba(232,164,184,0.2)", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12 }}>
               <div>
-                <h2 className={`font-bold ${text}`}>Struggle Score Heatmap</h2>
-                <p className={`text-xs ${muted}`}>Click a subject to highlight · Click any row to expand recommendations</p>
+                <div className="gl-section-title" style={{ marginBottom:4 }}>Struggle Score Heatmap</div>
+                <p style={{ fontSize:12, color:"var(--text-soft)" }}>Click subject column to highlight · Click row to expand</p>
               </div>
-              <div className="flex items-center gap-3 text-xs font-semibold flex-wrap">
-                {[["< 50","#EF4444"],["50–64","#F97316"],["65–77","#EAB308"],["78–87","#22C55E"],["88+","#0EA5E9"]].map(([l,c]) => (
-                  <div key={l} className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm" style={{ background: c }} />
-                    <span className={muted}>{l}</span>
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                {[["< 50","#c04040"],["50–64","#b87a1a"],["65–77","#8b5a7a"],["78–87","#4a7a64"],["88+","#6a5aaa"]].map(([l,c]) => (
+                  <div key={l} style={{ display:"flex", alignItems:"center", gap:5 }}>
+                    <div style={{ width:10, height:10, borderRadius:3, background:c, opacity:0.7 }} />
+                    <span style={{ fontSize:10, color:"var(--text-soft)", fontFamily:"'JetBrains Mono',monospace" }}>{l}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[700px]">
+            <div style={{ overflowX:"auto" }}>
+              <table className="td-heatmap" style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                 <thead>
-                  <tr className={dark ? "bg-slate-800/60" : "bg-slate-50"}>
-                    <th className={`px-4 py-3 text-left text-xs font-black uppercase tracking-wider ${muted}`}>Student</th>
+                  <tr style={{ background:"rgba(252,232,237,0.3)" }}>
+                    <th style={{ padding:"12px 20px", textAlign:"left", fontSize:10, fontWeight:700, color:"var(--text-soft)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Student</th>
                     {SUBJECTS.map(sub => (
-                      <th key={sub}
-                        onClick={() => setHlCol(hlCol === sub ? null : sub)}
-                        className={`px-3 py-3 text-center text-xs font-black uppercase tracking-wider cursor-pointer select-none transition-all ${hlCol === sub ? "text-sky-400 bg-sky-500/10" : muted}`}>
-                        {sub.slice(0, 4)}{hlCol === sub ? " ▾" : ""}
+                      <th key={sub} onClick={() => setHlCol(hlCol === sub ? null : sub)}
+                        style={{ padding:"12px 10px", textAlign:"center", fontSize:10, fontWeight:700, cursor:"pointer", userSelect:"none",
+                          color: hlCol === sub ? "var(--pink-deep)" : "var(--text-soft)",
+                          background: hlCol === sub ? "rgba(232,164,184,0.12)" : "transparent",
+                          textTransform:"uppercase", letterSpacing:"0.08em", transition:"all 0.2s" }}>
+                        {sub.slice(0,4)}{hlCol===sub?" ▾":""}
                       </th>
                     ))}
-                    <th className={`px-3 py-3 text-center text-xs font-black uppercase tracking-wider ${muted}`}>Avg</th>
-                    <th className={`px-3 py-3 text-center text-xs font-black uppercase tracking-wider ${muted}`}>Streak</th>
-                    <th className={`px-3 py-3 text-center text-xs font-black uppercase tracking-wider ${muted}`}>Active</th>
-                    <th className={`px-3 py-3 ${muted}`}></th>
+                    {["Avg","Streak","Active"].map(h => (
+                      <th key={h} style={{ padding:"12px 10px", textAlign:"center", fontSize:10, fontWeight:700, color:"var(--text-soft)", textTransform:"uppercase", letterSpacing:"0.08em" }}>{h}</th>
+                    ))}
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Class average row */}
-                  <tr className={`border-t ${divider} ${dark ? "bg-slate-800/30" : "bg-slate-50/80"}`}>
-                    <td className={`px-4 py-2.5 text-xs font-black uppercase tracking-wider ${muted}`}>Class Avg</td>
+                  {/* Class avg row */}
+                  <tr style={{ background:"rgba(252,232,237,0.25)", borderBottom:"1px solid rgba(232,164,184,0.15)" }}>
+                    <td style={{ padding:"10px 20px", fontSize:10, fontWeight:800, color:"var(--text-soft)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Class Avg</td>
                     {SUBJECTS.map(sub => {
-                      const avg = classAvg(sub);
-                      const c = scoreColor(avg);
+                      const a = classAvg(sub);
+                      const c = scoreTheme(a);
                       return (
-                        <td key={sub} className="px-3 py-2.5 text-center">
-                          <span className="inline-block w-10 text-center text-xs font-black py-1 rounded-lg"
-                            style={{ background: c.bg, color: c.fg }}>{avg}</span>
+                        <td key={sub} style={{ padding:"10px", textAlign:"center" }}>
+                          <span className="gl-score" style={{ background:c.bg, color:c.text, border:`1px solid ${c.border}` }}>{a}</span>
                         </td>
                       );
                     })}
                     <td colSpan={4} />
                   </tr>
 
-                  {/* Student rows */}
-                  {STUDENTS.map(s => {
-                    const avg    = avgScore(s);
+                  {STUDENTS.map((s, idx) => {
+                    const avg = avgScore(s);
                     const isAlert = atRisk.includes(s);
-                    const isExp  = expanded === s.name;
+                    const isExp = expanded === s.name;
                     return (
                       <>
-                        <tr key={s.name}
-                          onClick={() => setExpanded(isExp ? null : s.name)}
-                          className={`border-t ${divider} cursor-pointer transition-all ${dark ? "hover:bg-slate-800/50" : "hover:bg-slate-50"} ${isAlert ? (dark ? "bg-red-900/10" : "bg-red-50/40") : ""}`}>
-
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${s.grad} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                        <tr key={s.name} onClick={() => setExpanded(isExp ? null : s.name)}
+                          style={{ borderBottom:"1px solid rgba(232,164,184,0.12)", cursor:"pointer",
+                            background: isAlert ? "rgba(220,100,100,0.04)" : "transparent",
+                            transition:"background 0.2s" }}>
+                          <td style={{ padding:"12px 20px" }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                              <div className="gl-avatar" style={{ width:34, height:34, borderRadius:10, background:AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length], fontSize:13 }}>
                                 {s.avatar}
                               </div>
                               <div>
-                                <p className={`text-sm font-bold ${text}`}>{s.name}</p>
-                                <p className={`text-xs ${muted}`}>{s.sessions} sessions</p>
+                                <div style={{ fontSize:13, fontWeight:600, color:"var(--text)" }}>{s.name}</div>
+                                <div style={{ fontSize:11, color:"var(--text-soft)" }}>{s.sessions} sessions</div>
                               </div>
                             </div>
                           </td>
-
                           {SUBJECTS.map(sub => {
                             const val = s.scores[sub];
-                            const c = scoreColor(val);
+                            const c = scoreTheme(val);
                             return (
-                              <td key={sub} className={`px-3 py-3 text-center transition-all ${hlCol === sub ? "ring-1 ring-inset ring-sky-500/30 bg-sky-500/5" : ""}`}>
-                                <span className="inline-block w-10 text-center text-xs font-bold py-1 rounded-lg"
-                                  style={{ background: c.bg, color: c.fg }}>{val}</span>
+                              <td key={sub} style={{ padding:"12px 10px", textAlign:"center",
+                                background: hlCol === sub ? "rgba(232,164,184,0.08)" : "transparent",
+                                transition:"background 0.2s" }}>
+                                <span className="gl-score" style={{ background:c.bg, color:c.text, border:`1px solid ${c.border}` }}>{val}</span>
                               </td>
                             );
                           })}
-
-                          <td className="px-3 py-3 text-center">
-                            <span className="text-sm font-black" style={{ color: scoreColor(avg).bg }}>{avg}</span>
+                          <td style={{ padding:"12px 10px", textAlign:"center" }}>
+                            <span style={{ fontSize:13, fontWeight:700, color:scoreTheme(avg).text, fontFamily:"'JetBrains Mono',monospace" }}>{avg}</span>
                           </td>
-                          <td className="px-3 py-3 text-center">
-                            <span className={`text-xs font-bold ${s.streak === 0 ? "text-red-400" : s.streak < 7 ? "text-amber-400" : "text-emerald-400"}`}>
-                              {s.streak === 0 ? "⚠ 0" : `🔥 ${s.streak}`}
+                          <td style={{ padding:"12px 10px", textAlign:"center" }}>
+                            <span style={{ fontSize:11, fontWeight:600,
+                              color: s.streak === 0 ? "#c04040" : s.streak < 7 ? "#b87a1a" : "#4a7a64" }}>
+                              {s.streak === 0 ? "—" : `${s.streak}d`}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-center">
-                            <span className={`text-xs font-semibold ${s.lastActive === "Today" ? "text-emerald-400" : muted}`}>{s.lastActive}</span>
+                          <td style={{ padding:"12px 10px", textAlign:"center" }}>
+                            <span style={{ fontSize:11, fontWeight:600, color: s.lastActive === "Today" ? "#4a7a64" : "var(--text-soft)" }}>{s.lastActive}</span>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 justify-end">
-                              {isAlert && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-lg font-bold">Alert</span>}
-                              <span className={`text-xs ${muted}`}>{isExp ? "▲" : "▼"}</span>
+                          <td style={{ padding:"12px 16px", textAlign:"right" }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8, justifyContent:"flex-end" }}>
+                              {isAlert && <span className="gl-pill gl-pill-err" style={{ fontSize:9 }}>Alert</span>}
+                              <span style={{ fontSize:11, color:"var(--text-soft)" }}>{isExp ? "▲" : "▼"}</span>
                             </div>
                           </td>
                         </tr>
-
-                        {/* Expanded detail row */}
                         {isExp && (
-                          <tr key={`${s.name}-exp`} className={`border-t ${divider} ${dark ? "bg-slate-800/30" : "bg-sky-50/40"}`}>
-                            <td colSpan={SUBJECTS.length + 4} className="px-6 py-4">
-                              <div className="flex flex-wrap gap-6 items-start">
+                          <tr key={`${s.name}-exp`} className="td-row-expanded" style={{ borderBottom:"1px solid rgba(232,164,184,0.15)" }}>
+                            <td colSpan={SUBJECTS.length + 5} style={{ padding:"16px 24px" }}>
+                              <div style={{ display:"flex", flexWrap:"wrap", gap:24, alignItems:"flex-start" }}>
                                 <div>
-                                  <p className={`text-xs font-bold mb-2 ${muted}`}>Weakest subjects</p>
-                                  <div className="flex gap-2 flex-wrap">
-                                    {Object.entries(s.scores).sort(([, a], [, b]) => a - b).slice(0, 3).map(([sub, val]) => {
-                                      const c = scoreColor(val);
-                                      return (
-                                        <span key={sub} className="text-xs font-bold px-2.5 py-1 rounded-lg"
-                                          style={{ background: `${c.bg}25`, color: c.bg, border: `1px solid ${c.bg}40` }}>
-                                          {sub}: {val}
-                                        </span>
-                                      );
+                                  <div style={{ fontSize:10, fontWeight:700, color:"var(--text-soft)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Weakest Subjects</div>
+                                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                                    {Object.entries(s.scores).sort(([,a],[,b]) => a-b).slice(0,3).map(([sub,val]) => {
+                                      const c = scoreTheme(val);
+                                      return <span key={sub} className="gl-pill" style={{ background:c.bg, color:c.text, border:`1px solid ${c.border}`, fontSize:11 }}>{sub}: {val}</span>;
                                     })}
                                   </div>
                                 </div>
-                                <div>
-                                  <p className={`text-xs font-bold mb-2 ${muted}`}>Recommended action</p>
-                                  <p className={`text-xs leading-relaxed ${text}`}>
-                                    {s.streak === 0
-                                      ? "⚠️ Student inactive 5+ days — send a check-in notification today"
-                                      : avg < 55
-                                      ? "🎯 Assign to peer mentor for remedial sessions this week"
-                                      : avg < 70
-                                      ? "📘 Share targeted revision material for their 2 weakest subjects"
-                                      : "✅ On track — encourage consistency and offer optional challenges"}
+                                <div style={{ flex:1 }}>
+                                  <div style={{ fontSize:10, fontWeight:700, color:"var(--text-soft)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Recommended Action</div>
+                                  <p style={{ fontSize:13, color:"var(--text-mid)", lineHeight:1.7 }}>
+                                    {s.streak === 0 ? "Student inactive 5+ days — send a check-in today"
+                                      : avg < 55 ? "Assign to peer mentor for remedial sessions this week"
+                                      : avg < 70 ? "Share targeted revision material for their weakest subjects"
+                                      : "On track — encourage consistency and offer optional challenges"}
                                   </p>
                                 </div>
-                                <button className={`ml-auto shrink-0 text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${dark ? "border-sky-700 text-sky-400 hover:bg-sky-900/20" : "border-sky-300 text-sky-600 hover:bg-sky-50"}`}>
-                                  Message Student →
-                                </button>
+                                <button className="gl-btn gl-btn-ghost gl-btn-sm">Message Student</button>
                               </div>
                             </td>
                           </tr>
@@ -302,89 +299,73 @@ export default function TeacherDashboard() {
             </div>
           </div>
 
-          {/* ── Bottom two columns ── */}
-          <div className="grid md:grid-cols-2 gap-6">
-
-            {/* Recent assessments */}
-            <div className={`rounded-2xl border ${card}`}>
-              <div className={`px-5 py-4 border-b ${divider} flex items-center justify-between`}>
-                <h2 className={`font-bold text-sm ${text}`}>📋 Recent Assessments</h2>
-                <button onClick={() => navigate("/teacher/assessment")} className={`text-xs font-bold ${dark ? "text-sky-400" : "text-sky-600"} hover:underline`}>+ New</button>
+          {/* Bottom columns */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:24 }}>
+            {/* Assessments */}
+            <div className="gl-card gl-fade-up d4">
+              <div style={{ padding:"18px 22px", borderBottom:"1px solid rgba(232,164,184,0.2)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div className="gl-section-title" style={{ marginBottom:0 }}>Recent Assessments</div>
+                <button className="gl-btn gl-btn-ghost gl-btn-sm" onClick={() => navigate("/teacher/assessment")}>New</button>
               </div>
-              <div className="divide-y" style={{ borderColor: dark ? "#1e293b" : "#f1f5f9" }}>
-                {ASSESSMENTS.map((a, i) => (
-                  <div key={i} className="px-5 py-4">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div>
-                        <p className={`text-sm font-bold ${text}`}>{a.title}</p>
-                        <p className={`text-xs ${muted}`}>{a.subject} · {a.date}</p>
+              {ASSESSMENTS.map((a,i) => (
+                <div key={i} className="gl-row" style={{ padding:"16px 22px" }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:"var(--text)", marginBottom:4 }}>{a.title}</div>
+                    <div style={{ fontSize:11, color:"var(--text-soft)", marginBottom:10 }}>{a.subject} · {a.date}</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                      <div className="gl-prog-track" style={{ flex:1 }}>
+                        <div className="gl-prog-fill" style={{ width:`${(a.submitted/a.total)*100}%`, background:"linear-gradient(90deg,var(--pink),var(--mauve))" }} />
                       </div>
-                      <span className="text-sm font-black" style={{ color: scoreColor(a.avgScore).bg }}>{a.avgScore}%</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className={`flex-1 h-1.5 rounded-full ${dark ? "bg-slate-800" : "bg-slate-100"}`}>
-                        <div className="h-full rounded-full bg-sky-500" style={{ width: `${(a.submitted / a.total) * 100}%` }} />
-                      </div>
-                      <span className={`text-xs shrink-0 ${muted}`}>{a.submitted}/{a.total} submitted</span>
+                      <span style={{ fontSize:10, color:"var(--text-soft)", fontFamily:"'JetBrains Mono',monospace", flexShrink:0 }}>{a.submitted}/{a.total}</span>
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className={`px-5 py-3 border-t ${divider}`}>
-                <button onClick={() => navigate("/teacher/assessment")} className={`text-xs font-bold ${dark ? "text-sky-400" : "text-sky-600"} hover:underline`}>
-                  View all assessments →
+                  <span style={{ fontSize:16, fontWeight:700, color:scoreTheme(a.avgScore).text, fontFamily:"'Instrument Serif',serif", fontStyle:"italic", flexShrink:0 }}>{a.avgScore}%</span>
+                </div>
+              ))}
+              <div style={{ padding:"12px 22px" }}>
+                <button className="gl-btn gl-btn-ghost gl-btn-sm" style={{ width:"100%", justifyContent:"center" }} onClick={() => navigate("/teacher/assessment")}>
+                  View all assessments
                 </button>
               </div>
             </div>
 
-            {/* Upcoming sessions */}
-            <div className={`rounded-2xl border ${card}`}>
-              <div className={`px-5 py-4 border-b ${divider}`}>
-                <h2 className={`font-bold text-sm ${text}`}>📅 Upcoming Sessions</h2>
+            {/* Upcoming */}
+            <div className="gl-card gl-fade-up d5">
+              <div style={{ padding:"18px 22px", borderBottom:"1px solid rgba(232,164,184,0.2)" }}>
+                <div className="gl-section-title" style={{ marginBottom:0 }}>Upcoming Sessions</div>
               </div>
-              <div className="divide-y" style={{ borderColor: dark ? "#1e293b" : "#f1f5f9" }}>
-                {UPCOMING.map((u, i) => (
-                  <div key={i} className="px-5 py-4 flex items-start gap-3">
-                    <span className="text-2xl shrink-0">{u.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <p className={`text-sm font-bold ${text}`}>{u.title}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                          u.type === "Remedial"   ? dark ? "bg-red-900/40 text-red-400"    : "bg-red-50 text-red-500"
-                          : u.type === "New Topic" ? dark ? "bg-sky-900/40 text-sky-400"   : "bg-sky-50 text-sky-600"
-                                                   : dark ? "bg-violet-900/40 text-violet-400" : "bg-violet-50 text-violet-600"
-                        }`}>{u.type}</span>
-                      </div>
-                      <p className={`text-xs mb-1 ${muted}`}>{u.students}</p>
-                      <p className={`text-xs font-bold ${u.time.startsWith("Today") ? "text-amber-400" : muted}`}>📅 {u.time}</p>
+              {UPCOMING.map((u,i) => (
+                <div key={i} className="gl-row" style={{ padding:"16px 22px" }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:5 }}>
+                      <span style={{ fontSize:13, fontWeight:600, color:"var(--text)" }}>{u.title}</span>
+                      <span className={`gl-pill ${typeColor(u.type)}`} style={{ fontSize:9 }}>{u.type}</span>
                     </div>
+                    <div style={{ fontSize:11, color:"var(--text-soft)", marginBottom:3 }}>{u.students}</div>
+                    <div style={{ fontSize:11, fontWeight:600, color: u.time.startsWith("Today") ? "var(--pink-deep)" : "var(--text-soft)" }}>{u.time}</div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* ── Quick actions ── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Quick actions */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14 }} className="gl-fade-up d6">
             {[
-              { label:"AI Assessment Generator", icon:"🤖", desc:"Generate quizzes from topics", path:"/teacher/assessment", color:"#38BDF8" },
-              { label:"Full Analytics",           icon:"📊", desc:"Deep-dive class performance",  path:"/teacher/analytics",  color:"#8B5CF6" },
-              { label:"Resource Library",         icon:"📚", desc:"Upload & share materials",     path:"/teacher/resources",  color:"#14B8A6" },
-              { label:"28 Students Enrolled",     icon:"👥", desc:"Class XII · Section A",        path:null,                  color:"#F59E0B" },
-            ].map((a, i) => (
-              <button key={i}
-                onClick={a.path ? () => navigate(a.path) : undefined}
-                disabled={!a.path}
-                className={`rounded-2xl border p-5 text-left transition-all ${a.path ? "hover:-translate-y-0.5 cursor-pointer" : "cursor-default"} ${card}`}>
-                <div className="text-3xl mb-3">{a.icon}</div>
-                <p className="text-sm font-bold mb-0.5" style={{ color: a.color }}>{a.label}</p>
-                <p className={`text-xs ${muted}`}>{a.desc}</p>
+              { label:"Assessment Generator", desc:"AI-generated quizzes", path:"/teacher/assessment", color:"var(--pink-deep)" },
+              { label:"Full Analytics",        desc:"Deep-dive performance",  path:"/teacher/analytics",  color:"#7b68bb" },
+              { label:"Resource Library",      desc:"Upload & share files",   path:"/teacher/resources",  color:"#5a8a74" },
+              { label:"28 Students",           desc:"Class XII · Section A",  path:null,                  color:"#b87a1a" },
+            ].map(a => (
+              <button key={a.label} className="td-quick-card" onClick={a.path ? () => navigate(a.path) : undefined} disabled={!a.path}>
+                <div style={{ width:28, height:4, borderRadius:2, background:a.color, marginBottom:16, opacity:0.6 }} />
+                <div style={{ fontSize:13, fontWeight:700, color:a.color, marginBottom:5 }}>{a.label}</div>
+                <div style={{ fontSize:11, color:"var(--text-soft)" }}>{a.desc}</div>
               </button>
             ))}
           </div>
-
         </div>
       </div>
-
+    </>
   );
 }

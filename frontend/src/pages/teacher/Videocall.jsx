@@ -1,481 +1,563 @@
 /**
- * VideoCall.jsx — PathwayAI Teacher Video Call
- * Simulated class video call: webcam tiles, mic/cam/screen/whiteboard controls
- * Uses real browser MediaDevices API for actual camera/mic access
- * src/pages/teacher/VideoCall.jsx
+ * Videocall.jsx — PathwayAI Teacher Video Call
+ * Glassmorphism soft pink calm aesthetic
  */
-
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useApp } from "../../context/AppContext";
+import { GLASS_CSS } from "./glassTheme";
 
-/* ── Students in the call ── */
-const STUDENTS = [
-  { id:1, name:"Priya M.",  avatar:"P", color:"#14B8A6", speaking:false, hand:true  },
-  { id:2, name:"Raj P.",    avatar:"R", color:"#22C55E", speaking:true,  hand:false },
-  { id:3, name:"Meera S.",  avatar:"M", color:"#F59E0B", speaking:false, hand:false },
-  { id:4, name:"Arjun T.",  avatar:"A", color:"#8B5CF6", speaking:false, hand:true  },
-  { id:5, name:"Aisha K.",  avatar:"A", color:"#F97316", speaking:false, hand:false },
-  { id:6, name:"Dev R.",    avatar:"D", color:"#38BDF8", speaking:false, hand:false },
-  { id:7, name:"Rahul K.",  avatar:"R", color:"#EF4444", speaking:false, hand:false },
-  { id:8, name:"Sunita D.", avatar:"S", color:"#EC4899", speaking:false, hand:false },
-];
-
-/* ── Whiteboard colours ── */
-const COLORS  = ["#FFFFFF","#EF4444","#F59E0B","#22C55E","#38BDF8","#8B5CF6","#F97316","#EC4899"];
-const BRUSHES = [2, 4, 8, 14];
-const TOOLS   = ["pen","eraser","rect","circle","line","text"];
-
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
-*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-
-.vc-wrap { width:100%; height:100vh; overflow:hidden; display:flex; flex-direction:column; font-family:'DM Sans',sans-serif; background:#060E1C; color:white; }
-
-/* ── Top bar ── */
-.vc-topbar { height:56px; background:rgba(6,14,28,.95); border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; padding:0 20px; gap:16px; flex-shrink:0; backdrop-filter:blur(12px); }
-.vc-topbar-title { fontFamily:'Syne',sans-serif; font-size:15px; font-weight:800; color:#EDE8DF; }
-.vc-topbar-sub   { font-size:12px; color:#3D5068; margin-left:4px; }
-.rec-dot { width:8px; height:8px; border-radius:50%; background:#EF4444; box-shadow:0 0 0 0 rgba(239,68,68,.5); animation:vc-ping 2s ease-in-out infinite; flex-shrink:0; }
-@keyframes vc-ping { 0%{box-shadow:0 0 0 0 rgba(239,68,68,.5)} 70%{box-shadow:0 0 0 8px rgba(239,68,68,0)} 100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} }
-.vc-timer { font-family:'Syne',sans-serif; font-size:13px; font-weight:800; color:#EF4444; margin-left:auto; }
-
-/* ── Layout ── */
-.vc-body { flex:1; display:flex; overflow:hidden; }
-
-/* ── Main area ── */
-.vc-main { flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; }
-
-/* ── Teacher video ── */
-.vc-teacher { flex:1; position:relative; background:#0A1628; overflow:hidden; }
-.vc-teacher video { width:100%; height:100%; object-fit:cover; }
-.vc-teacher-label { position:absolute; bottom:14px; left:14px; background:rgba(0,0,0,.65); backdrop-filter:blur(8px); padding:5px 12px; border-radius:10px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; }
-
-/* ── Whiteboard ── */
-.vc-whiteboard { flex:1; position:relative; background:#1a1a2e; overflow:hidden; }
-.vc-wb-canvas  { cursor:crosshair; display:block; }
-
-/* ── Whiteboard toolbar ── */
-.wb-toolbar {
-  position:absolute; left:12px; top:50%; transform:translateY(-50%);
-  background:rgba(6,14,28,.92); border:1px solid rgba(255,255,255,.09);
-  border-radius:16px; padding:10px 8px; display:flex; flex-direction:column; gap:8px;
-  backdrop-filter:blur(12px);
+const EXTRA_CSS = `
+.vc-root {
+  position: fixed; inset: 0; z-index: 100;
+  font-family: 'DM Sans', sans-serif;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(232,164,184,0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(197,184,232,0.15) 0%, transparent 50%),
+    #fdf0f5;
+  overflow: hidden;
+  display: flex; flex-direction: column;
 }
-.wb-btn {
-  width:36px; height:36px; border-radius:10px; border:none; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; font-size:15px;
-  background:transparent; color:#4B5568; transition:all .2s;
-}
-.wb-btn:hover, .wb-btn.active { background:rgba(56,189,248,.14); color:#38BDF8; }
-.wb-btn.active { box-shadow:0 0 0 1.5px rgba(56,189,248,.4); }
-.wb-divider { height:1px; background:rgba(255,255,255,.07); margin:2px 0; }
 
-/* Color picker row */
-.wb-color-row {
-  position:absolute; left:64px; top:50%; transform:translateY(-50%);
-  background:rgba(6,14,28,.92); border:1px solid rgba(255,255,255,.09);
-  border-radius:14px; padding:10px 8px; display:flex; flex-direction:column; gap:6px;
-  backdrop-filter:blur(12px);
+/* Top bar */
+.vc-topbar {
+  height: 58px; flex-shrink: 0;
+  background: rgba(255,240,245,0.75);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(232,164,184,0.2);
+  display: flex; align-items: center; padding: 0 24px; gap: 16px;
+  box-shadow: 0 2px 16px rgba(201,116,142,0.08);
 }
-.wb-color-dot {
-  width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid transparent;
-  transition:transform .15s, border-color .15s;
+
+.vc-logo {
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px; font-style: italic;
+  color: var(--pink-deep); letter-spacing: 0.02em;
 }
-.wb-color-dot:hover, .wb-color-dot.active { transform:scale(1.25); border-color:white; }
 
-/* ── Student grid ── */
-.vc-students { width:200px; flex-shrink:0; background:rgba(6,14,28,.8); border-left:1px solid rgba(255,255,255,.07); overflow-y:auto; padding:12px 10px; display:flex; flex-direction:column; gap:8px; }
-.vc-students::-webkit-scrollbar { width:3px; }
-.vc-students::-webkit-scrollbar-thumb { background:rgba(56,189,248,.2); border-radius:2px; }
-.vc-students-label { font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#3D5068; padding:0 4px; margin-bottom:2px; }
-
-.student-tile {
-  border-radius:14px; overflow:hidden; position:relative; aspect-ratio:4/3;
-  background:#0D1829; border:1.5px solid rgba(255,255,255,.07);
-  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:4;
-  transition:border-color .2s;
+.vc-live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #c04040;
+  box-shadow: 0 0 8px rgba(192,64,64,0.6);
+  animation: pulse-red 1.5s ease-in-out infinite;
 }
-.student-tile.speaking { border-color:#22C55E; box-shadow:0 0 12px rgba(34,197,94,.25); }
-.student-tile-name { font-size:10px; font-weight:700; color:rgba(255,255,255,.6); margin-top:4px; }
-.student-tile-avatar {
-  width:38px; height:38px; border-radius:12px;
-  display:flex; align-items:center; justify-content:center;
-  font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:white;
+@keyframes pulse-red { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.85)} }
+
+.vc-timer {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: var(--text-soft); letter-spacing: 0.05em;
 }
-.hand-badge { position:absolute; top:6px; right:6px; font-size:14px; animation:vc-bounce .6s ease-in-out infinite alternate; }
-@keyframes vc-bounce { from{transform:translateY(0)} to{transform:translateY(-4px)} }
-.mic-off { position:absolute; bottom:6px; left:6px; font-size:10px; background:rgba(239,68,68,.8); padding:2px 5px; border-radius:6px; }
 
-/* ── Bottom control bar ── */
-.vc-controls { height:72px; background:rgba(6,14,28,.97); border-top:1px solid rgba(255,255,255,.07); display:flex; align-items:center; justify-content:center; gap:12px; flex-shrink:0; }
-.ctrl-btn {
-  width:48px; height:48px; border-radius:14px; border:none; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; font-size:20px;
-  background:rgba(255,255,255,.07); color:white; transition:all .2s;
+.vc-end-btn {
+  padding: 8px 20px; border-radius: 12px; border: none;
+  background: rgba(192,64,64,0.12); border: 1px solid rgba(192,64,64,0.25);
+  color: #b04040; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s;
 }
-.ctrl-btn:hover { background:rgba(255,255,255,.12); transform:translateY(-2px); }
-.ctrl-btn.off   { background:rgba(239,68,68,.2); color:#F87171; border:1px solid rgba(239,68,68,.3); }
-.ctrl-btn.active{ background:rgba(56,189,248,.15); color:#38BDF8; border:1px solid rgba(56,189,248,.3); }
-.ctrl-btn.end   { background:rgba(239,68,68,.9); color:white; width:64px; border-radius:18px; font-size:14px; font-weight:800; font-family:'DM Sans',sans-serif; }
-.ctrl-btn.end:hover { background:#EF4444; }
-.ctrl-label { font-size:9px; color:#3D5068; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-top:3px; }
-.ctrl-wrap  { display:flex; flex-direction:column; align-items:center; }
+.vc-end-btn:hover { background: rgba(192,64,64,0.2); }
 
-/* ── Chat panel ── */
-.vc-chat { width:0; transition:width .3s ease; overflow:hidden; flex-shrink:0; }
-.vc-chat.open { width:260px; border-left:1px solid rgba(255,255,255,.07); }
-.vc-chat-inner { width:260px; height:100%; display:flex; flex-direction:column; background:rgba(8,18,38,.9); }
-.vc-chat-header { padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.07); font-size:13px; font-weight:700; color:#EDE8DF; display:flex; justify-content:space-between; }
-.vc-chat-msgs   { flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
-.vc-chat-msgs::-webkit-scrollbar { width:3px; }
-.chat-msg { font-size:12px; line-height:1.55; }
-.chat-msg-name { font-weight:700; margin-bottom:2px; }
-.chat-msg-body { color:rgba(255,255,255,.6); }
-.vc-chat-input-row { padding:10px 12px; border-top:1px solid rgba(255,255,255,.07); display:flex; gap:8px; }
-.vc-chat-input { flex:1; background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.08); border-radius:10px; padding:8px 12px; font-size:12px; color:white; outline:none; font-family:'DM Sans',sans-serif; }
-.vc-chat-input:focus { border-color:#38BDF8; }
-.vc-chat-send { background:#38BDF8; border:none; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700; color:white; cursor:pointer; }
+/* Body */
+.vc-body { flex: 1; display: flex; overflow: hidden; }
 
-/* ── Raised hands panel ── */
-.hands-badge { position:absolute; top:-4px; right:-4px; width:16px; height:16px; border-radius:50%; background:#F59E0B; font-size:9px; font-weight:800; color:white; display:flex; align-items:center; justify-content:center; }
+/* Video area */
+.vc-video-area {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 16px; gap: 12px; overflow: hidden;
+}
+
+/* Main video tile */
+.vc-main-tile {
+  flex: 1; border-radius: 20px; overflow: hidden; position: relative;
+  background: linear-gradient(135deg, rgba(252,232,237,0.8), rgba(240,232,252,0.7));
+  border: 1px solid rgba(232,164,184,0.25);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 40px rgba(201,116,142,0.1), inset 0 1px 0 rgba(255,255,255,0.7);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 0;
+}
+
+.vc-video-mesh {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(232,164,184,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232,164,184,0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.vc-main-avatar {
+  width: 90px; height: 90px; border-radius: 22px;
+  background: linear-gradient(135deg, var(--pink), var(--mauve));
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Instrument Serif', serif;
+  font-size: 40px; font-weight: 400; font-style: italic;
+  color: white; position: relative; z-index: 1;
+  box-shadow: 0 8px 32px rgba(201,116,142,0.3);
+  transition: box-shadow 0.5s;
+}
+
+.vc-speaking-ring {
+  position: absolute; inset: 0; border-radius: 20px;
+  border: 2px solid transparent; pointer-events: none;
+  transition: border-color 0.4s, box-shadow 0.4s;
+}
+.vc-speaking-ring.speaking {
+  border-color: rgba(201,116,142,0.5);
+  box-shadow: inset 0 0 24px rgba(232,164,184,0.1);
+}
+
+.vc-name-tag {
+  position: absolute; bottom: 14px; left: 14px;
+  background: rgba(255,240,245,0.85); backdrop-filter: blur(12px);
+  border: 1px solid rgba(232,164,184,0.2);
+  padding: 6px 12px; border-radius: 10px;
+  display: flex; align-items: center; gap: 7px;
+  box-shadow: 0 2px 12px rgba(201,116,142,0.1);
+}
+.vc-name-tag span { font-size: 12px; font-weight: 600; color: var(--text); }
+
+/* Thumbnails */
+.vc-thumbs { display: flex; gap: 10px; height: 110px; flex-shrink: 0; }
+
+.vc-thumb {
+  flex: 1; border-radius: 14px;
+  background: rgba(252,232,237,0.6);
+  border: 1px solid rgba(232,164,184,0.2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; position: relative; overflow: hidden;
+  backdrop-filter: blur(8px); transition: all 0.2s;
+  box-shadow: 0 2px 12px rgba(201,116,142,0.06);
+}
+.vc-thumb:hover { border-color: rgba(201,116,142,0.4); transform: translateY(-2px); }
+.vc-thumb.active-t { border-color: rgba(201,116,142,0.5); box-shadow: 0 4px 20px rgba(201,116,142,0.15); }
+
+.vc-thumb-avatar {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Instrument Serif', serif; font-size: 18px; font-style: italic;
+  color: white;
+}
+.vc-thumb-name {
+  position: absolute; bottom: 6px; left: 0; right: 0; text-align: center;
+  font-size: 10px; font-weight: 600; color: var(--text-soft);
+}
+
+/* Controls */
+.vc-controls {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; padding: 12px; flex-shrink: 0;
+  background: rgba(255,240,245,0.7); backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(232,164,184,0.15);
+}
+
+.vc-ctrl {
+  width: 48px; height: 48px; border-radius: 14px; border: none;
+  background: rgba(255,240,245,0.8); border: 1px solid rgba(232,164,184,0.2);
+  color: var(--text-mid); cursor: pointer; font-size: 17px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; backdrop-filter: blur(8px);
+  box-shadow: 0 2px 10px rgba(201,116,142,0.06);
+}
+.vc-ctrl:hover { background: rgba(255,232,240,0.9); border-color: rgba(201,116,142,0.35); transform: translateY(-1px); }
+.vc-ctrl.off { background: rgba(192,64,64,0.1); border-color: rgba(192,64,64,0.25); color: #b04040; }
+.vc-ctrl.on-active { background: rgba(201,116,142,0.12); border-color: rgba(201,116,142,0.35); color: var(--pink-deep); }
+
+.vc-ctrl-label { font-size: 9px; font-weight: 600; color: var(--text-soft); margin-top: 3px; letter-spacing: 0.04em; text-align: center; }
+.vc-ctrl-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+/* Panel */
+.vc-panel {
+  width: 310px; flex-shrink: 0;
+  background: rgba(255,240,245,0.6); backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(232,164,184,0.2);
+  display: flex; flex-direction: column;
+  transition: width 0.3s ease;
+}
+.vc-panel.hidden { width: 0; overflow: hidden; }
+
+.vc-panel-tabs {
+  display: flex; border-bottom: 1px solid rgba(232,164,184,0.15); flex-shrink: 0;
+  background: rgba(255,240,245,0.5);
+}
+
+.vc-ptab {
+  flex: 1; padding: 13px 6px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; border: none;
+  background: transparent; color: var(--text-soft); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+}
+.vc-ptab:hover { color: var(--text-mid); }
+.vc-ptab.active { color: var(--pink-deep); border-color: var(--pink-deep); }
+
+/* Chat */
+.vc-chat-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.vc-chat-body::-webkit-scrollbar { width: 3px; }
+.vc-chat-body::-webkit-scrollbar-thumb { background: rgba(201,116,142,0.2); border-radius: 2px; }
+
+.vc-msg { display: flex; gap: 8px; align-items: flex-start; }
+.vc-msg.me { flex-direction: row-reverse; }
+
+.vc-msg-bubble {
+  max-width: 200px; padding: 10px 13px; border-radius: 14px;
+  font-size: 12px; line-height: 1.6; color: var(--text-mid);
+  background: rgba(255,240,245,0.8);
+  border: 1px solid rgba(232,164,184,0.2);
+  backdrop-filter: blur(8px);
+}
+.vc-msg.me .vc-msg-bubble {
+  background: rgba(201,116,142,0.1);
+  border-color: rgba(201,116,142,0.2);
+  text-align: right;
+}
+.vc-msg-name { font-size: 10px; font-weight: 700; color: var(--pink-deep); margin-bottom: 3px; }
+
+.vc-chat-input-row {
+  padding: 12px; border-top: 1px solid rgba(232,164,184,0.15); display: flex; gap: 8px; flex-shrink: 0;
+}
+.vc-chat-input {
+  flex: 1; background: rgba(255,240,245,0.7); border: 1px solid rgba(232,164,184,0.25);
+  border-radius: 12px; padding: 9px 12px; font-size: 12px; color: var(--text);
+  outline: none; font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+  backdrop-filter: blur(8px);
+}
+.vc-chat-input:focus { border-color: rgba(201,116,142,0.45); box-shadow: 0 0 0 3px rgba(232,164,184,0.12); }
+.vc-chat-input::placeholder { color: var(--text-soft); }
+
+.vc-send-btn {
+  width: 38px; height: 38px; border-radius: 11px; border: none;
+  background: linear-gradient(135deg, var(--pink-deep), var(--mauve));
+  color: white; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(201,116,142,0.3); transition: all 0.2s;
+}
+.vc-send-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(201,116,142,0.4); }
+
+/* Participants */
+.vc-participants { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+
+.vc-p-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: rgba(255,240,245,0.6); border: 1px solid rgba(232,164,184,0.18);
+  border-radius: 12px; backdrop-filter: blur(8px); transition: all 0.2s;
+}
+.vc-p-row:hover { background: rgba(255,240,245,0.85); border-color: rgba(201,116,142,0.3); }
+.vc-p-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+
+/* AI insight */
+.vc-ai-card {
+  margin: 12px; background: rgba(197,184,232,0.15); border: 1px solid rgba(197,184,232,0.3);
+  border-radius: 14px; padding: 16px; backdrop-filter: blur(12px);
+}
+.vc-ai-title {
+  font-family: 'Instrument Serif', serif; font-size: 13px; font-style: italic;
+  color: #7b68bb; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+.vc-ai-item { font-size: 11px; color: var(--text-soft); margin-bottom: 6px; line-height: 1.65; }
+.vc-ai-item strong { color: #7b68bb; }
+
+/* Whiteboard */
+.vc-whiteboard { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.vc-wb-toolbar {
+  display: flex; align-items: center; gap: 6px; padding: 10px 14px;
+  border-bottom: 1px solid rgba(232,164,184,0.15); flex-wrap: wrap; flex-shrink: 0;
+  background: rgba(255,240,245,0.5);
+}
+.vc-wb-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 1px solid rgba(232,164,184,0.2);
+  background: rgba(255,240,245,0.7); color: var(--text-mid);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; transition: all 0.2s;
+}
+.vc-wb-btn:hover { background: rgba(255,232,240,0.9); }
+.vc-wb-btn.active-wb { background: rgba(201,116,142,0.15); border-color: rgba(201,116,142,0.35); color: var(--pink-deep); }
+.vc-color-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; }
+.vc-color-dot.sel { border-color: var(--pink-deep); transform: scale(1.2); }
+.vc-canvas-wrap { flex: 1; position: relative; overflow: hidden; }
+canvas.vc-canvas { width: 100%; height: 100%; background: #fffdf9; cursor: crosshair; display: block; }
+.vc-wb-clear {
+  margin-left: auto; padding: 5px 11px; border-radius: 7px;
+  border: 1px solid rgba(192,64,64,0.2); background: transparent;
+  color: rgba(192,64,64,0.7); font-size: 10px; font-weight: 700;
+  cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+}
+.vc-wb-clear:hover { background: rgba(192,64,64,0.08); color: #b04040; }
+
+@keyframes vc-fade-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.vc-new-msg { animation: vc-fade-in 0.3s ease; }
+
+.vc-toast {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  background: rgba(255,240,245,0.9); border: 1px solid rgba(232,164,184,0.3);
+  color: var(--pink-deep); padding: 8px 18px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(201,116,142,0.15);
+  animation: vc-fade-in 0.3s ease; pointer-events: none; z-index: 20; white-space: nowrap;
+}
 `;
 
-/* ── Whiteboard component ── */
-function Whiteboard({ dark }) {
-  const canvasRef  = useRef(null);
-  const drawing    = useRef(false);
-  const lastPos    = useRef({ x:0, y:0 });
-  const [tool,     setTool]     = useState("pen");
-  const [color,    setColor]    = useState("#FFFFFF");
-  const [brushIdx, setBrushIdx] = useState(1);
-  const [showColors, setShowColors] = useState(true);
-  const history    = useRef([]);
+function Whiteboard() {
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const lastPos = useRef({ x:0, y:0 });
+  const [tool, setTool] = useState("pen");
+  const [color, setColor] = useState("#3d2a35");
+  const [size, setSize] = useState(3);
+  const COLORS = ["#3d2a35","#c9748e","#9b8ed4","#6a9a88","#c49878","#7aa8c8","#b87a1a"];
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx    = canvas.getContext("2d");
-    canvas.width  = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    ctx.fillStyle = "#1a1a2e";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+    if (!canvas) return;
+    canvas.width = canvas.offsetWidth || 400;
+    canvas.height = canvas.offsetHeight || 300;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fffdf9"; ctx.fillRect(0,0,canvas.width,canvas.height);
   }, []);
 
   const getPos = (e, canvas) => {
     const rect = canvas.getBoundingClientRect();
-    const touch = e.touches ? e.touches[0] : e;
-    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x:(clientX-rect.left)*(canvas.width/rect.width), y:(clientY-rect.top)*(canvas.height/rect.height) };
   };
 
-  const startDraw = (e) => {
-    const canvas = canvasRef.current;
-    const pos = getPos(e, canvas);
-    drawing.current = true;
-    lastPos.current = pos;
-    const ctx = canvas.getContext("2d");
-    history.current.push(ctx.getImageData(0,0,canvas.width,canvas.height));
-    if (history.current.length > 40) history.current.shift();
-  };
+  const startDraw = useCallback((e) => {
+    e.preventDefault(); drawing.current = true;
+    lastPos.current = getPos(e, canvasRef.current);
+  }, []);
 
-  const draw = (e) => {
+  const draw = useCallback((e) => {
+    e.preventDefault();
     if (!drawing.current) return;
     const canvas = canvasRef.current;
-    const ctx    = canvas.getContext("2d");
-    const pos    = getPos(e, canvas);
-    ctx.lineWidth   = BRUSHES[brushIdx];
-    ctx.lineCap     = "round";
-    ctx.lineJoin    = "round";
-    ctx.strokeStyle = tool === "eraser" ? "#1a1a2e" : color;
-    ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
+    const ctx = canvas.getContext("2d");
+    const pos = getPos(e, canvas);
     ctx.beginPath();
     ctx.moveTo(lastPos.current.x, lastPos.current.y);
     ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = tool === "eraser" ? "#fffdf9" : color;
+    ctx.lineWidth = tool === "eraser" ? size*5 : size;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.stroke();
     lastPos.current = pos;
-  };
+  }, [tool, color, size]);
 
-  const stopDraw = () => { drawing.current = false; };
+  const stopDraw = useCallback(() => { drawing.current = false; }, []);
 
-  const clearBoard = () => {
+  const clear = () => {
     const canvas = canvasRef.current;
-    const ctx    = canvas.getContext("2d");
-    history.current.push(ctx.getImageData(0,0,canvas.width,canvas.height));
-    ctx.fillStyle = "#1a1a2e";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fffdf9"; ctx.fillRect(0,0,canvas.width,canvas.height);
   };
-
-  const undo = () => {
-    if (!history.current.length) return;
-    const canvas = canvasRef.current;
-    const ctx    = canvas.getContext("2d");
-    ctx.putImageData(history.current.pop(), 0, 0);
-  };
-
-  const TOOL_ICONS = { pen:"✏️", eraser:"⬜", rect:"▭", circle:"○", line:"╱", text:"T" };
 
   return (
     <div className="vc-whiteboard">
-      {/* Whiteboard toolbar */}
-      <div className="wb-toolbar">
-        {TOOLS.map(t => (
-          <button key={t} className={`wb-btn ${tool===t?"active":""}`} onClick={()=>setTool(t)} title={t}>
-            {TOOL_ICONS[t]}
-          </button>
+      <div className="vc-wb-toolbar">
+        <button className={`vc-wb-btn ${tool==="pen"?"active-wb":""}`} onClick={() => setTool("pen")} title="Pen">✏</button>
+        <button className={`vc-wb-btn ${tool==="eraser"?"active-wb":""}`} onClick={() => setTool("eraser")} title="Erase">◻</button>
+        <div style={{ width:1, height:20, background:"rgba(232,164,184,0.2)", margin:"0 3px" }} />
+        {[2,4,8].map(s => (
+          <button key={s} className={`vc-wb-btn ${size===s?"active-wb":""}`} onClick={() => setSize(s)} style={{ fontSize:6+s }}>●</button>
         ))}
-        <div className="wb-divider"/>
-        {BRUSHES.map((b,i) => (
-          <button key={b} className={`wb-btn ${brushIdx===i?"active":""}`} onClick={()=>setBrushIdx(i)} title={`Size ${b}`}>
-            <div style={{ width:b, height:b, borderRadius:"50%", background: brushIdx===i?"#38BDF8":"#4B5568", maxWidth:14, maxHeight:14 }}/>
-          </button>
+        <div style={{ width:1, height:20, background:"rgba(232,164,184,0.2)", margin:"0 3px" }} />
+        {COLORS.map(c => (
+          <div key={c} className={`vc-color-dot ${color===c?"sel":""}`}
+            style={{ background:c, boxShadow: color===c ? `0 0 6px ${c}` : "none" }}
+            onClick={() => setColor(c)} />
         ))}
-        <div className="wb-divider"/>
-        <button className="wb-btn" onClick={undo} title="Undo">↩</button>
-        <button className="wb-btn" onClick={clearBoard} title="Clear">🗑</button>
+        <button className="vc-wb-clear" onClick={clear}>Clear</button>
       </div>
-
-      {/* Color picker */}
-      {showColors && (
-        <div className="wb-color-row">
-          {COLORS.map(c => (
-            <div key={c} className={`wb-color-dot ${color===c?"active":""}`}
-              style={{ background:c }} onClick={()=>setColor(c)}/>
-          ))}
-        </div>
-      )}
-
-      {/* Canvas */}
-      <canvas
-        ref={canvasRef}
-        className="vc-wb-canvas"
-        style={{ width:"100%", height:"100%" }}
-        onMouseDown={startDraw}
-        onMouseMove={draw}
-        onMouseUp={stopDraw}
-        onMouseLeave={stopDraw}
-        onTouchStart={startDraw}
-        onTouchMove={draw}
-        onTouchEnd={stopDraw}
-      />
-
-      {/* Whiteboard label */}
-      <div style={{ position:"absolute", top:14, left:"50%", transform:"translateX(-50%)", background:"rgba(0,0,0,.6)", padding:"5px 14px", borderRadius:10, fontSize:12, fontWeight:700, color:"rgba(255,255,255,.5)" }}>
-        📝 Whiteboard — visible to all students
+      <div className="vc-canvas-wrap">
+        <canvas ref={canvasRef} className="vc-canvas"
+          onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+          onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw} />
       </div>
     </div>
   );
 }
 
-/* ── Timer hook ── */
-function useTimer() {
-  const [secs, setSecs] = useState(0);
+const PARTICIPANTS = [
+  { name:"Mrs. Sunita Deshpande", letter:"S", color:"linear-gradient(135deg,#e8a4b8,#c9748e)", role:"Teacher", mic:true,  cam:true  },
+  { name:"Rahul K.",              letter:"R", color:"linear-gradient(135deg,#b8d4e8,#7aa8c8)", role:"Student", mic:true,  cam:false },
+  { name:"Priya M.",              letter:"P", color:"linear-gradient(135deg,#c4e8c4,#88b888)", role:"Student", mic:false, cam:true  },
+  { name:"Arjun T.",              letter:"A", color:"linear-gradient(135deg,#c5b8e8,#9b8ed4)", role:"Student", mic:true,  cam:true  },
+];
+
+export default function Videocall() {
+  const [micOn,   setMicOn]   = useState(true);
+  const [camOn,   setCamOn]   = useState(true);
+  const [panel,   setPanel]   = useState("chat");
+  const [showPanel, setShowPanel] = useState(true);
+  const [timer,   setTimer]   = useState(0);
+  const [speaking, setSpeaking] = useState(0);
+  const [toast,   setToast]   = useState(null);
+  const [msg,     setMsg]     = useState("");
+  const [messages, setMessages] = useState([
+    { id:1, from:"Mrs. Deshpande", letter:"S", color:"#c9748e", text:"Good afternoon class! Let's begin with Chapter 5.", time:"3:00", me:false },
+    { id:2, from:"Rahul K.",       letter:"R", color:"#7aa8c8", text:"Ready! I had a doubt from last class too.", time:"3:01", me:false },
+    { id:3, from:"You",            letter:"S", color:"#c9748e", text:"Perfect, we'll cover that too. Open your textbooks.", time:"3:01", me:true },
+  ]);
+  const chatRef = useRef(null);
+
   useEffect(() => {
-    const t = setInterval(() => setSecs(s => s+1), 1000);
+    const t = setInterval(() => setTimer(s => s+1), 1000);
     return () => clearInterval(t);
   }, []);
-  const h = String(Math.floor(secs/3600)).padStart(2,"0");
-  const m = String(Math.floor((secs%3600)/60)).padStart(2,"0");
-  const s = String(secs%60).padStart(2,"0");
-  return `${h}:${m}:${s}`;
-}
 
-/* ── Main component ── */
-export default function VideoCall() {
-  const { dark } = useApp();
-  const videoRef   = useRef(null);
-  const [micOn,    setMicOn]    = useState(true);
-  const [camOn,    setCamOn]    = useState(true);
-  const [screenOn, setScreenOn] = useState(false);
-  const [wb,       setWb]       = useState(false);
-  const [chat,     setChat]     = useState(false);
-  const [chatMsg,  setChatMsg]  = useState("");
-  const [messages, setMessages] = useState([
-    { id:1, name:"Priya M.",  color:"#14B8A6", body:"Good morning ma'am! 🙏" },
-    { id:2, name:"Raj P.",    color:"#22C55E", body:"Ready for class!" },
-    { id:3, name:"Arjun T.",  color:"#8B5CF6", body:"Can you share the notes afterwards?" },
-  ]);
-  const [stream,   setStream]   = useState(null);
-  const [students, setStudents] = useState(STUDENTS);
-  const [ended,    setEnded]    = useState(false);
-  const timer = useTimer();
-  const handsUp = students.filter(s => s.hand).length;
-
-  /* ── Start camera ── */
   useEffect(() => {
-    navigator.mediaDevices?.getUserMedia({ video:true, audio:true })
-      .then(s => { setStream(s); if (videoRef.current) videoRef.current.srcObject = s; })
-      .catch(() => {});
-    return () => stream?.getTracks().forEach(t => t.stop());
+    const t = setInterval(() => setSpeaking(s => (s+1)%2), 5000);
+    return () => clearInterval(t);
   }, []);
 
-  /* ── Toggle cam ── */
-  const toggleCam = () => {
-    stream?.getVideoTracks().forEach(t => { t.enabled = !camOn; });
-    setCamOn(c => !c);
-  };
-  const toggleMic = () => {
-    stream?.getAudioTracks().forEach(t => { t.enabled = !micOn; });
-    setMicOn(m => !m);
+  const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+
+  const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2500); };
+
+  const sendMsg = () => {
+    if (!msg.trim()) return;
+    const now = new Date();
+    setMessages(m => [...m, { id:Date.now(), from:"You", letter:"S", color:"#c9748e", text:msg, time:`${now.getHours()}:${String(now.getMinutes()).padStart(2,"0")}`, me:true }]);
+    setMsg("");
+    setTimeout(() => chatRef.current?.scrollTo({ top:99999, behavior:"smooth" }), 50);
+    setTimeout(() => {
+      setMessages(m => [...m, { id:Date.now()+1, from:"Rahul K.", letter:"R", color:"#7aa8c8", text:"Understood! Could you explain that once more please?", time:`${now.getHours()}:${String(now.getMinutes()).padStart(2,"0")}`, me:false }]);
+      setTimeout(() => chatRef.current?.scrollTo({ top:99999, behavior:"smooth" }), 50);
+    }, 2000);
   };
 
-  /* ── Screen share ── */
-  const toggleScreen = async () => {
-    if (screenOn) { setScreenOn(false); return; }
-    try {
-      const sc = await navigator.mediaDevices.getDisplayMedia({ video:true });
-      if (videoRef.current) videoRef.current.srcObject = sc;
-      setScreenOn(true);
-      sc.getVideoTracks()[0].onended = () => setScreenOn(false);
-    } catch {}
+  const togglePanel = (tab) => {
+    if (panel === tab && showPanel) setShowPanel(false);
+    else { setPanel(tab); setShowPanel(true); }
   };
-
-  /* ── Lower hand ── */
-  const lowerHand = (id) => {
-    setStudents(s => s.map(st => st.id===id ? {...st, hand:false} : st));
-  };
-
-  /* ── Send chat ── */
-  const sendChat = () => {
-    if (!chatMsg.trim()) return;
-    setMessages(m => [...m, { id:Date.now(), name:"You (Teacher)", color:"#38BDF8", body:chatMsg }]);
-    setChatMsg("");
-  };
-
-  /* ── End call ── */
-  const endCall = () => {
-    stream?.getTracks().forEach(t => t.stop());
-    setEnded(true);
-  };
-
-  if (ended) {
-    return (
-     
-        <div style={{ minHeight:"100vh", background:"#060E1C", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16 }}>
-          <div style={{ fontSize:48 }}>📞</div>
-          <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, color:"#EDE8DF" }}>Call Ended</h2>
-          <p style={{ color:"#3D5068", fontSize:14 }}>Duration: {timer} · {STUDENTS.length} students attended</p>
-          <button onClick={()=>setEnded(false)}
-            style={{ marginTop:12, padding:"12px 28px", borderRadius:14, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#0369A1,#38BDF8)", color:"white", fontSize:14, fontWeight:800, fontFamily:"'DM Sans',sans-serif" }}>
-            Start New Call
-          </button>
-        </div>
-      
-    );
-  }
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      
-        <div className="vc-wrap">
-
-          {/* ── TOP BAR ── */}
-          <div className="vc-topbar">
-            <div className="rec-dot"/>
-            <span className="vc-topbar-title">Class XII · Section A</span>
-            <span className="vc-topbar-sub">Live · {STUDENTS.length} students</span>
-            {handsUp > 0 && (
-              <div style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 12px", borderRadius:20, background:"rgba(245,158,11,.14)", border:"1px solid rgba(245,158,11,.3)" }}>
-                <span style={{ fontSize:13 }}>✋</span>
-                <span style={{ fontSize:12, fontWeight:700, color:"#F59E0B" }}>{handsUp} hand{handsUp>1?"s":""} raised</span>
-              </div>
-            )}
-            <span className="vc-timer">{timer}</span>
+      <style>{GLASS_CSS + EXTRA_CSS}</style>
+      <div className="vc-root">
+        {/* Top bar */}
+        <div className="vc-topbar">
+          <div className="vc-logo">PathwayAI</div>
+          <div style={{ flex:1, display:"flex", alignItems:"center", gap:12 }}>
+            <span style={{ fontSize:13, fontWeight:600, color:"var(--text)" }}>Chemical Reactions — Class XII</span>
+            <div className="vc-live-dot" />
+            <span style={{ fontSize:11, fontWeight:600, color:"#c04040" }}>Live</span>
+            <span className="vc-timer">{fmt(timer)}</span>
           </div>
+          <button className="vc-end-btn">End Class</button>
+        </div>
 
-          {/* ── BODY ── */}
-          <div className="vc-body">
-
-            {/* ── MAIN ── */}
-            <div className="vc-main">
-
-              {/* Teacher video or whiteboard */}
-              {wb ? (
-                <Whiteboard dark={dark}/>
-              ) : (
-                <div className="vc-teacher">
-                  {stream && camOn ? (
-                    <video ref={videoRef} autoPlay muted playsInline style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
-                  ) : (
-                    <div style={{ width:"100%", height:"100%", background:"linear-gradient(145deg,#07101F,#0D1829)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:12 }}>
-                      <div style={{ width:80,height:80,borderRadius:24,background:"linear-gradient(135deg,#0369A1,#38BDF8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:800,color:"white",fontFamily:"'Syne',sans-serif" }}>T</div>
-                      <span style={{ fontSize:14, color:"rgba(255,255,255,.4)", fontWeight:600 }}>Camera is off</span>
-                    </div>
-                  )}
-                  <div className="vc-teacher-label">
-                    <div style={{ width:8,height:8,borderRadius:"50%",background:"#22C55E",animation:"vc-ping 2s ease-in-out infinite" }}/>
-                    <span style={{ fontSize:12, fontWeight:700 }}>Mrs. Sunita Deshpande · You</span>
-                    {!micOn && <span style={{ marginLeft:4, fontSize:11, color:"#F87171" }}>🔇</span>}
-                  </div>
-                </div>
-              )}
+        {/* Body */}
+        <div className="vc-body">
+          <div className="vc-video-area">
+            {/* Main tile */}
+            <div className="vc-main-tile">
+              <div className="vc-video-mesh" />
+              <div className="vc-main-avatar"
+                style={{ boxShadow: speaking===0 ? "0 0 0 4px rgba(201,116,142,0.4), 0 8px 40px rgba(201,116,142,0.25)" : "0 8px 32px rgba(201,116,142,0.2)" }}>
+                {PARTICIPANTS[speaking].letter}
+              </div>
+              <div className={`vc-speaking-ring ${speaking===0?"speaking":""}`} />
+              <div className="vc-name-tag">
+                <div style={{ width:7, height:7, borderRadius:"50%", background:"var(--pink-deep)", opacity:0.7 }} />
+                <span>{PARTICIPANTS[speaking].name}</span>
+              </div>
+              {toast && <div className="vc-toast">{toast}</div>}
             </div>
 
-            {/* ── STUDENT GRID ── */}
-            <div className="vc-students">
-              <p className="vc-students-label">Students ({STUDENTS.length})</p>
-              {students.map(s => (
-                <div key={s.id} className={`student-tile ${s.speaking?"speaking":""}`}>
-                  <div className="student-tile-avatar" style={{ background:`${s.color}25`, border:`2px solid ${s.color}40`, color:s.color }}>
-                    {s.avatar}
-                  </div>
-                  <span className="student-tile-name">{s.name.split(" ")[0]}</span>
-                  {s.hand && (
-                    <div className="hand-badge" onClick={() => lowerHand(s.id)} style={{ cursor:"pointer" }} title="Lower hand">✋</div>
-                  )}
-                  {s.speaking && <div style={{ position:"absolute", bottom:6, right:6, width:8,height:8,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 6px #22C55E" }}/>}
+            {/* Thumbnails */}
+            <div className="vc-thumbs">
+              {PARTICIPANTS.map((p,i) => (
+                <div key={i} className={`vc-thumb ${speaking===i?"active-t":""}`}>
+                  <div className="vc-thumb-avatar" style={{ background:p.color }}>{p.letter}</div>
+                  <div className="vc-thumb-name">{p.name.split(" ")[0]}</div>
                 </div>
               ))}
             </div>
 
-            {/* ── CHAT PANEL ── */}
-            <div className={`vc-chat ${chat?"open":""}`}>
-              <div className="vc-chat-inner">
-                <div className="vc-chat-header">
-                  <span>💬 Class Chat</span>
-                  <button onClick={()=>setChat(false)} style={{ background:"none",border:"none",cursor:"pointer",color:"#4B5568",fontSize:16 }}>✕</button>
+            {/* Controls */}
+            <div className="vc-controls">
+              {[
+                { icon:micOn?"🎙":"🔇", label:micOn?"Mute":"Unmute", off:!micOn, action:()=>setMicOn(m=>!m) },
+                { icon:"📷",           label:camOn?"Stop":"Start",    off:!camOn, action:()=>setCamOn(c=>!c) },
+                { icon:"🖥",           label:"Share",   off:false, active:false, action:()=>showToast("Screen share started") },
+                { icon:"✋",           label:"Hand",    off:false, active:false, action:()=>showToast("Hand raised") },
+                { icon:"💬",          label:"Chat",    off:false, active:panel==="chat"&&showPanel, action:()=>togglePanel("chat") },
+                { icon:"✏",           label:"Board",   off:false, active:panel==="whiteboard"&&showPanel, action:()=>togglePanel("whiteboard") },
+                { icon:"👥",          label:"People",  off:false, active:panel==="participants"&&showPanel, action:()=>togglePanel("participants") },
+              ].map((c,i) => (
+                <div key={i} className="vc-ctrl-group">
+                  <button className={`vc-ctrl ${c.off?"off":""} ${c.active?"on-active":""}`} onClick={c.action}>{c.icon}</button>
+                  <div className="vc-ctrl-label">{c.label}</div>
                 </div>
-                <div className="vc-chat-msgs">
-                  {messages.map(msg => (
-                    <div key={msg.id} className="chat-msg">
-                      <div className="chat-msg-name" style={{ color:msg.color }}>{msg.name}</div>
-                      <div className="chat-msg-body">{msg.body}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Panel */}
+          <div className={`vc-panel ${showPanel?"":"hidden"}`}>
+            <div className="vc-panel-tabs">
+              {[
+                { id:"chat",         label:"Chat" },
+                { id:"whiteboard",   label:"Board" },
+                { id:"participants", label:"People" },
+              ].map(t => (
+                <button key={t.id} className={`vc-ptab ${panel===t.id?"active":""}`} onClick={() => setPanel(t.id)}>{t.label}</button>
+              ))}
+            </div>
+
+            {/* Chat */}
+            {panel === "chat" && (
+              <>
+                <div className="vc-chat-body" ref={chatRef}>
+                  {messages.map(m => (
+                    <div key={m.id} className={`vc-msg ${m.me?"me":""} vc-new-msg`}>
+                      <div style={{ width:26, height:26, borderRadius:8, background:m.me?"linear-gradient(135deg,var(--pink),var(--mauve))":"rgba(232,164,184,0.2)", border:"1px solid rgba(232,164,184,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontFamily:"'Instrument Serif',serif", fontStyle:"italic", color:m.me?"white":m.color, flexShrink:0 }}>
+                        {m.letter}
+                      </div>
+                      <div className="vc-msg-bubble">
+                        <div className="vc-msg-name">{m.from}</div>
+                        {m.text}
+                      </div>
                     </div>
                   ))}
                 </div>
                 <div className="vc-chat-input-row">
-                  <input className="vc-chat-input" placeholder="Type a message…" value={chatMsg}
-                    onChange={e=>setChatMsg(e.target.value)}
-                    onKeyDown={e=>e.key==="Enter"&&sendChat()}/>
-                  <button className="vc-chat-send" onClick={sendChat}>→</button>
+                  <input className="vc-chat-input" placeholder="Message class..."
+                    value={msg} onChange={e=>setMsg(e.target.value)}
+                    onKeyDown={e=>e.key==="Enter"&&sendMsg()} />
+                  <button className="vc-send-btn" onClick={sendMsg}>↑</button>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
+
+            {panel === "whiteboard" && <Whiteboard />}
+
+            {panel === "participants" && (
+              <>
+                <div className="vc-participants">
+                  {PARTICIPANTS.map((p,i) => (
+                    <div key={i} className="vc-p-row">
+                      <div style={{ width:34, height:34, borderRadius:10, background:p.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontFamily:"'Instrument Serif',serif", fontStyle:"italic", color:"white", flexShrink:0 }}>{p.letter}</div>
+                      <div className="vc-p-name">{p.name}</div>
+                      <span className="gl-pill" style={{ fontSize:9 }}>{p.role}</span>
+                      <div style={{ display:"flex", gap:5 }}>
+                        <span style={{ fontSize:12, opacity:p.mic?1:0.3 }}>🎙</span>
+                        <span style={{ fontSize:12, opacity:p.cam?1:0.3 }}>📷</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="vc-ai-card">
+                  <div className="vc-ai-title">Session Insights</div>
+                  <div className="vc-ai-item"><strong>Engagement:</strong> High — 3 students active</div>
+                  <div className="vc-ai-item"><strong>Coverage:</strong> 42% of Chapter 5</div>
+                  <div className="vc-ai-item"><strong>Suggestion:</strong> Practice problem next</div>
+                  <div className="vc-ai-item"><strong>Remaining:</strong> ~{Math.max(0,45-Math.floor(timer/60))} min</div>
+                </div>
+              </>
+            )}
           </div>
-
-          {/* ── CONTROL BAR ── */}
-          <div className="vc-controls">
-            {[
-              { icon: micOn?"🎙":"🔇",     label:"Mic",    action:toggleMic,             active:!micOn,   off:!micOn   },
-              { icon: camOn?"📹":"🚫",     label:"Camera", action:toggleCam,             active:!camOn,   off:!camOn   },
-              { icon:"🖥",                  label:"Screen", action:toggleScreen,          active:screenOn, off:false    },
-              { icon:"📝",                  label:"Board",  action:()=>setWb(w=>!w),      active:wb,       off:false    },
-              { icon:"💬",                  label:"Chat",   action:()=>setChat(c=>!c),    active:chat,     off:false    },
-              { icon:"✋",                  label:`Hands${handsUp>0?` (${handsUp})`:""}`, action:()=>lowerHand(students.find(s=>s.hand)?.id), active:false, off:false },
-            ].map(({ icon,label,action,active,off }) => (
-              <div key={label} className="ctrl-wrap">
-                <button className={`ctrl-btn ${active?"active":""} ${off?"off":""}`} onClick={action}>{icon}</button>
-                <span className="ctrl-label">{label}</span>
-              </div>
-            ))}
-
-            <div style={{ width:1, height:36, background:"rgba(255,255,255,.08)", margin:"0 4px" }}/>
-
-            <div className="ctrl-wrap">
-              <button className="ctrl-btn end" onClick={endCall}>End</button>
-              <span className="ctrl-label">End Call</span>
-            </div>
-          </div>
-
         </div>
+      </div>
     </>
   );
 }
