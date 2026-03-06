@@ -1,6 +1,5 @@
 /**
- * AuthPage.jsx
- * Login + Signup for Student | Teacher | Peer Mentor
+ * AuthPage.jsx — with real Supabase auth
  * src/pages/auth/AuthPage.jsx
  */
 
@@ -8,7 +7,6 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 
-/* ── Shared CSS ── */
 const AUTH_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -55,28 +53,19 @@ const AUTH_CSS = `
   }
   .auth-input:focus { box-shadow: 0 0 0 3px rgba(56,189,248,0.22); }
 
-  *, *::before, *::after {
-    transition-property: background-color, border-color, color, box-shadow;
-    transition-duration: 0.3s; transition-timing-function: ease;
-  }
-  .orb, .orb-drift, .animate-fade-up, .animate-scale-in,
-  .animate-ping-slow, .animate-glow-pulse, .animate-spin { transition-property: none; }
-
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-thumb { background:rgba(56,139,199,0.4); border-radius:3px; }
 `;
 
-/* ── Role config ── */
 const ROLE_CONFIG = {
   student: {
     emoji: "🎓", label: "Student",
     accent: "#38BDF8", accentDim: "rgba(56,189,248,0.15)",
-    gradFrom: "from-sky-500", gradTo: "to-blue-600",
     tagline: "Your learning journey starts here.",
     sideBg: "linear-gradient(145deg, #062040, #0a2a4a)",
     extraSignup: [
-      { id: "class",    label: "Class / Grade",       type: "text",   placeholder: "e.g. Class 10 or 12th" },
-      { id: "language", label: "Preferred Language",  type: "select",
+      { id: "class",    label: "Class / Grade",      type: "text",   placeholder: "e.g. Class 10 or 12th" },
+      { id: "language", label: "Preferred Language", type: "select",
         options: ["Hindi","Marathi","Tamil","Bengali","Telugu","Kannada","Urdu","Gujarati","English"] },
     ],
     dashboard: "/student/dashboard",
@@ -84,24 +73,22 @@ const ROLE_CONFIG = {
   teacher: {
     emoji: "📚", label: "Teacher",
     accent: "#14B8A6", accentDim: "rgba(20,184,166,0.15)",
-    gradFrom: "from-teal-500", gradTo: "to-cyan-600",
     tagline: "Empower your classroom with real intelligence.",
     sideBg: "linear-gradient(145deg, #042626, #063030)",
     extraSignup: [
-      { id: "school",  label: "School Name",        type: "text", placeholder: "e.g. Govt. High School, Pune" },
-      { id: "subject", label: "Subject(s) Taught",  type: "text", placeholder: "e.g. Mathematics, Science" },
+      { id: "school",  label: "School Name",       type: "text", placeholder: "e.g. Govt. High School, Pune" },
+      { id: "subject", label: "Subject(s) Taught", type: "text", placeholder: "e.g. Mathematics, Science" },
     ],
     dashboard: "/teacher/dashboard",
   },
   mentor: {
     emoji: "⭐", label: "Peer Mentor",
     accent: "#F59E0B", accentDim: "rgba(245,158,11,0.15)",
-    gradFrom: "from-amber-500", gradTo: "to-orange-500",
     tagline: "Teach others. Build credentials. Earn while you learn.",
     sideBg: "linear-gradient(145deg, #271800, #3a2200)",
     extraSignup: [
-      { id: "subject", label: "Subject Expertise",      type: "text", placeholder: "e.g. Mathematics" },
-      { id: "upi",     label: "UPI ID (for payouts)",   type: "text", placeholder: "e.g. yourname@upi" },
+      { id: "subject", label: "Subject Expertise",    type: "text", placeholder: "e.g. Mathematics" },
+      { id: "upi",     label: "UPI ID (for payouts)", type: "text", placeholder: "e.g. yourname@upi" },
     ],
     dashboard: "/mentor/dashboard",
   },
@@ -128,7 +115,6 @@ const EyeOpen = () => (
     <circle cx="12" cy="12" r="3"/>
   </svg>
 );
-
 const EyeClosed = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
@@ -136,14 +122,12 @@ const EyeClosed = () => (
     <line x1="3" y1="3" x2="21" y2="21"/>
   </svg>
 );
-
 const CheckShield = () => (
   <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
     <circle cx="8" cy="8" r="7.2" stroke="currentColor" strokeOpacity="0.4"/>
     <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-
 const SunIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
     <circle cx="12" cy="12" r="4"/>
@@ -153,14 +137,12 @@ const SunIcon = () => (
     <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
   </svg>
 );
-
 const MoonIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
   </svg>
 );
 
-/* ── Mesh background ── */
 function MeshBg({ dark, accent }) {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -189,7 +171,6 @@ function MeshBg({ dark, accent }) {
   );
 }
 
-/* ── Input field ── */
 function Field({ id, label, type = "text", placeholder, value, onChange, required, options, dark, children }) {
   const borderColor = dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.12)";
   const bg          = dark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.9)";
@@ -238,7 +219,6 @@ function Field({ id, label, type = "text", placeholder, value, onChange, require
   );
 }
 
-/* ── Theme Toggle ── */
 function ThemeToggle({ dark, toggle }) {
   return (
     <button
@@ -266,28 +246,24 @@ function ThemeToggle({ dark, toggle }) {
   );
 }
 
-/* ══════════════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════════════ */
 export default function AuthPage({ mode = "login" }) {
-  const navigate        = useNavigate();
+  const navigate = useNavigate();
   const { role = "student" } = useParams();
-  const cfg             = ROLE_CONFIG[role] || ROLE_CONFIG.student;
-  const isLogin         = mode === "login";
+  const cfg = ROLE_CONFIG[role] || ROLE_CONFIG.student;
+  const isLogin = mode === "login";
 
-  // Global context
-  const { login, dark: globalDark, toggleDark } = useApp();
+  const { user, login, signup, dark: globalDark, toggleDark } = useApp();
 
-  // Local dark state synced from context
   const [dark, setDark] = useState(globalDark);
   useEffect(() => { setDark(globalDark); }, [globalDark]);
 
-  const localToggle = () => {
-    toggleDark();           // updates context + localStorage
-    setDark((d) => !d);    // immediate local re-render
-  };
+  // ✅ Navigate as soon as user is set in context (after onAuthStateChange fires)
+  useEffect(() => {
+    if (user) navigate(cfg.dashboard, { replace: true });
+  }, [user, cfg.dashboard, navigate]);
 
-  // Form state
+  const localToggle = () => { toggleDark(); setDark(d => !d); };
+
   const [form, setForm] = useState({
     name: "", email: "", phone: "", password: "", confirm: "",
     class: "", language: "", school: "", subject: "", upi: "",
@@ -296,39 +272,64 @@ export default function AuthPage({ mode = "login" }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState("");
+  const [successMsg,  setSuccessMsg]  = useState("");
 
   const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
-  /* ── Submit ── */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccessMsg("");
 
-    if (!isLogin && form.password !== form.confirm) {
-      setError("Passwords don't match.");
-      return;
-    }
     if (!form.email || !form.password) {
       setError("Please fill in all required fields.");
       return;
     }
+    if (!isLogin && form.password !== form.confirm) {
+      setError("Passwords don't match.");
+      return;
+    }
+    if (!isLogin && form.password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
 
     setLoading(true);
-    // ↓ Replace this with your real Supabase / backend auth call
-    await new Promise((r) => setTimeout(r, 1200));
-
-    // Save user to global context & localStorage
-    login({
-      name:  isLogin ? (form.email.split("@")[0]) : form.name || form.email.split("@")[0],
-      email: form.email,
-      role,
-    });
-
-    setLoading(false);
-    navigate(cfg.dashboard);
+    try {
+      if (isLogin) {
+        await login(form.email, form.password);
+        // ✅ No navigate here — the useEffect above handles it when user state updates
+      } else {
+        await signup(form.email, form.password, {
+          name:     form.name || form.email.split("@")[0],
+          role,
+          language: form.language || null,
+          school:   form.school   || null,
+          subject:  form.subject  || null,
+          upi:      form.upi      || null,
+        });
+        // If email confirmation is OFF in Supabase, user is set immediately and
+        // the useEffect above will navigate. If it's ON, show the message below.
+        setSuccessMsg("Account created! Check your email to confirm, then log in.");
+      }
+    } catch (err) {
+      const msg = err.message || "";
+      if (msg.includes("Invalid login credentials")) {
+        setError("Incorrect email or password. Please try again.");
+      } else if (msg.includes("User already registered")) {
+        setError("An account with this email already exists. Try logging in.");
+      } else if (msg.includes("Email not confirmed")) {
+        setError("Please check your email and confirm your account first.");
+      } else if (msg.includes("fetch") || msg.includes("network")) {
+        setError("Network error. Check your internet connection.");
+      } else {
+        setError(msg || "Something went wrong. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /* ── Styles ── */
   const cardBg = dark ? "rgba(13,25,45,0.82)" : "rgba(255,255,255,0.88)";
 
   return (
@@ -338,18 +339,16 @@ export default function AuthPage({ mode = "login" }) {
       <div className={`w-full min-h-screen flex overflow-x-hidden relative ${dark ? "text-white" : "text-slate-900"}`}>
         <MeshBg dark={dark} accent={cfg.accent} />
 
-        {/* ════ LEFT PANEL — desktop only ════ */}
+        {/* ════ LEFT PANEL ════ */}
         <div
           className="hidden lg:flex flex-col justify-between w-[42%] shrink-0 relative overflow-hidden p-12"
           style={{ background: cfg.sideBg }}
         >
-          {/* Glow blobs */}
           <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full pointer-events-none orb"
             style={{ background: `radial-gradient(circle, ${cfg.accent}18 0%, transparent 70%)` }}/>
           <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full pointer-events-none orb"
             style={{ background: "radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 70%)", animationDelay: "3s" }}/>
 
-          {/* Logo */}
           <button onClick={() => navigate("/")} className="flex items-center gap-2.5 w-fit">
             <LogoMark />
             <span className="font-display text-xl italic text-white tracking-tight">
@@ -357,7 +356,6 @@ export default function AuthPage({ mode = "login" }) {
             </span>
           </button>
 
-          {/* Middle content */}
           <div>
             <div className="text-5xl mb-5">{cfg.emoji}</div>
             <p className="text-xs font-black tracking-widest uppercase mb-3" style={{ color: cfg.accent }}>
@@ -385,7 +383,6 @@ export default function AuthPage({ mode = "login" }) {
               ))}
             </div>
 
-            {/* Role switcher pills */}
             <div className="flex gap-2 mt-8">
               {[
                 { id: "student", emoji: "🎓" },
@@ -407,7 +404,7 @@ export default function AuthPage({ mode = "login" }) {
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>© 2026 PathwayAI · Enactus EnCode</p>
         </div>
 
-        {/* ════ RIGHT PANEL — form ════ */}
+        {/* ════ RIGHT PANEL ════ */}
         <div className="flex-1 flex items-center justify-center p-5 md:p-10 relative">
 
           {/* Mobile top bar */}
@@ -465,7 +462,7 @@ export default function AuthPage({ mode = "login" }) {
                   : `Join PathwayAI as a ${cfg.label.toLowerCase()}.`}
               </p>
 
-              {/* Login / Signup toggle tabs */}
+              {/* Login / Signup tabs */}
               <div
                 className="flex rounded-xl p-1 mb-6"
                 style={{ background: dark ? "rgba(255,255,255,0.06)" : "#f1f5f9" }}
@@ -473,15 +470,13 @@ export default function AuthPage({ mode = "login" }) {
                 {[["login", "Log In"], ["signup", "Sign Up"]].map(([m, lbl]) => (
                   <button
                     key={m}
-                    onClick={() => navigate(`/${m}/${role}`)}
+                    onClick={() => { setError(""); setSuccessMsg(""); navigate(`/${m}/${role}`); }}
                     className="flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-200"
                     style={{
                       background: mode === m
                         ? `linear-gradient(135deg, ${cfg.accent}, ${cfg.accent}bb)`
                         : "transparent",
-                      color: mode === m
-                        ? "#fff"
-                        : (dark ? "#475569" : "#94a3b8"),
+                      color: mode === m ? "#fff" : (dark ? "#475569" : "#94a3b8"),
                       boxShadow: mode === m ? `0 2px 12px ${cfg.accent}35` : "none",
                     }}
                   >
@@ -494,30 +489,34 @@ export default function AuthPage({ mode = "login" }) {
               {error && (
                 <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium"
                   style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}>
-                  {error}
+                  ⚠️ {error}
+                </div>
+              )}
+
+              {/* Success banner */}
+              {successMsg && (
+                <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium"
+                  style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#86efac" }}>
+                  ✅ {successMsg}
                 </div>
               )}
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* Full name — signup only */}
                 {!isLogin && (
                   <Field id="name" label="Full Name" placeholder="Your full name"
                     value={form.name} onChange={set("name")} required dark={dark} />
                 )}
 
-                {/* Email */}
                 <Field id="email" label="Email Address" type="email" placeholder="you@email.com"
                   value={form.email} onChange={set("email")} required dark={dark} />
 
-                {/* Phone — signup only */}
                 {!isLogin && (
                   <Field id="phone" label="Mobile Number" type="tel" placeholder="+91 98765 43210"
-                    value={form.phone} onChange={set("phone")} required dark={dark} />
+                    value={form.phone} onChange={set("phone")} dark={dark} />
                 )}
 
-                {/* Role-specific extra fields — signup only */}
                 {!isLogin && cfg.extraSignup.map((f) => (
                   <Field
                     key={f.id} id={f.id} label={f.label} type={f.type}
@@ -527,20 +526,18 @@ export default function AuthPage({ mode = "login" }) {
                   />
                 ))}
 
-                {/* Password */}
                 <Field
                   id="password" label="Password"
                   type={showPass ? "text" : "password"}
-                  placeholder={isLogin ? "Your password" : "Create a strong password"}
+                  placeholder={isLogin ? "Your password" : "Create a strong password (min 6 chars)"}
                   value={form.password} onChange={set("password")} required dark={dark}
                 >
-                  <button type="button" onClick={() => setShowPass((s) => !s)}
+                  <button type="button" onClick={() => setShowPass(s => !s)}
                     style={{ color: dark ? "#475569" : "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>
                     {showPass ? <EyeClosed /> : <EyeOpen />}
                   </button>
                 </Field>
 
-                {/* Confirm password — signup only */}
                 {!isLogin && (
                   <Field
                     id="confirm" label="Confirm Password"
@@ -548,23 +545,22 @@ export default function AuthPage({ mode = "login" }) {
                     placeholder="Repeat your password"
                     value={form.confirm} onChange={set("confirm")} required dark={dark}
                   >
-                    <button type="button" onClick={() => setShowConfirm((s) => !s)}
+                    <button type="button" onClick={() => setShowConfirm(s => !s)}
                       style={{ color: dark ? "#475569" : "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>
                       {showConfirm ? <EyeClosed /> : <EyeOpen />}
                     </button>
                   </Field>
                 )}
 
-                {/* Forgot password */}
                 {isLogin && (
                   <div className="text-right -mt-1">
-                    <button type="button" className="text-xs font-bold hover:underline" style={{ color: cfg.accent, background: "none", border: "none", cursor: "pointer" }}>
+                    <button type="button" className="text-xs font-bold hover:underline"
+                      style={{ color: cfg.accent, background: "none", border: "none", cursor: "pointer" }}>
                       Forgot password?
                     </button>
                   </div>
                 )}
 
-                {/* Submit button */}
                 <button
                   type="submit"
                   disabled={loading}
@@ -573,13 +569,13 @@ export default function AuthPage({ mode = "login" }) {
                     width: "100%",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                     fontWeight: 700, color: "white", fontSize: 14,
-                    padding: "14px 0", borderRadius: 16, border: "none", cursor: loading ? "not-allowed" : "pointer",
+                    padding: "14px 0", borderRadius: 16, border: "none",
+                    cursor: loading ? "not-allowed" : "pointer",
                     background: `linear-gradient(135deg, ${cfg.accent}, ${cfg.accent}99)`,
                     boxShadow: `0 6px 24px ${cfg.accent}35`,
                     opacity: loading ? 0.65 : 1,
                     marginTop: 8,
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    transform: "translateY(0)",
                     transition: "transform 0.2s ease, opacity 0.2s ease",
                   }}
                   onMouseEnter={(e) => { if (!loading) e.currentTarget.style.transform = "translateY(-2px)"; }}
@@ -598,12 +594,11 @@ export default function AuthPage({ mode = "login" }) {
                   )}
                 </button>
 
-                {/* Switch mode link */}
                 <p className="text-center text-xs pt-1" style={{ color: dark ? "#475569" : "#94a3b8" }}>
                   {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
                   <button
                     type="button"
-                    onClick={() => navigate(`/${isLogin ? "signup" : "login"}/${role}`)}
+                    onClick={() => { setError(""); setSuccessMsg(""); navigate(`/${isLogin ? "signup" : "login"}/${role}`); }}
                     className="font-bold hover:underline"
                     style={{ color: cfg.accent, background: "none", border: "none", cursor: "pointer" }}
                   >

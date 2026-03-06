@@ -5,7 +5,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 
 // Notes
-import NotesPage from "./pages/NotesPage";
+
 
 // Landing + Auth
 import LandingPage from "./pages/auth/LandingPage";
@@ -23,7 +23,7 @@ import Credentials from "./pages/student/Credentials";
 import ResumeBuilder from "./pages/student/ResumeBuilder";
 import Employers from "./pages/student/Employers";
 import AnimatedLessons from "./pages/student/AnimatedLessons";
-import SignToText from "./pages/student/SignToText";
+
 
 // Teacher
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -63,8 +63,7 @@ export default function App() {
           <Route path="/student/resume" element={<ResumeBuilder />} />
           <Route path="/student/employers" element={<Employers />} />
           <Route path="/student/lessons" element={<AnimatedLessons />} />
-          <Route path="/student/voice-notes" element={<NotesPage />} />
-          <Route path="/student/sign-to-text" element={<SignToText />} />
+          
 
           {/* Teacher */}
           <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
